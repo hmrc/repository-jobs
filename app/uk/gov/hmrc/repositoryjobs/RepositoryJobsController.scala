@@ -16,14 +16,28 @@
 
 package uk.gov.hmrc.repositoryjobs
 
+import play.api.libs.json.Json
 import uk.gov.hmrc.play.microservice.controller.BaseController
 import uk.gov.hmrc.play.http.logging.MdcLoggingExecutionContext._
 import play.api.mvc._
+import play.modules.reactivemongo.MongoDbConnection
+
 import scala.concurrent.Future
 
-object RepositoryJobsController extends RepositoryJobsController
+object RepositoryJobsController extends RepositoryJobsController with MongoDbConnection {
+	override val buildRepository: BuildsRepository with Object = new BuildsMongoRepository(db)
+}
 
 trait RepositoryJobsController extends BaseController {
+	val buildRepository: BuildsRepository
+
+
+	def builds(repositoryName: String) = Action.async { implicit request =>
+		buildRepository.getForRepository(repositoryName).map {
+			case Nil => NotFound(s"No build found for '$repositoryName'")
+			case builds => Ok(Json.toJson(builds))
+		}
+	}
 
 	def hello() = Action.async { implicit request =>
 		Future.successful(Ok("Hello world"))

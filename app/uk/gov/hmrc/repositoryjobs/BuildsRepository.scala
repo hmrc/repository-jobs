@@ -28,12 +28,12 @@ case class Build(repositoryName: String, jobName: String, jobUrl: String, buildN
                  timestamp: Long, duration: Int, buildUrl: String, builtOn: String)
 
 object Build {
-  val formats = Json.format[Build]
+  implicit val formats = Json.format[Build]
 }
 
 trait BuildsRepository {
   def add(build: Build): Future[Boolean]
-  def getForRepository(repoName: String): Future[Seq[Build]]
+  def getForRepository(repositoryName: String): Future[Seq[Build]]
   def getAllByRepo : Future[Map[String, Seq[Build]]]
   def getAll: Future[Seq[Build]]
 }
@@ -51,8 +51,8 @@ class BuildsMongoRepository (mongo: () => DB)
     }
   }
 
-  def getForRepository(repoName: String): Future[Seq[Build]] = {
-    find("repositoryName" -> BSONDocument("$eq" -> repoName)) map {
+  def getForRepository(repositoryName: String): Future[Seq[Build]] = {
+    find("repositoryName" -> BSONDocument("$eq" -> repositoryName)) map {
       case Nil => Seq()
       case data => data
     }
