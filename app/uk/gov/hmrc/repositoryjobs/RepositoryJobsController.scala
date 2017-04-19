@@ -16,17 +16,16 @@
 
 package uk.gov.hmrc.repositoryjobs
 
-import uk.gov.hmrc.play.audit.http.config.LoadAuditingConfig
-import uk.gov.hmrc.play.audit.http.connector.AuditConnector
-import uk.gov.hmrc.play.auth.microservice.connectors.AuthConnector
-import uk.gov.hmrc.play.config.{AppName, RunMode, ServicesConfig}
-import uk.gov.hmrc.play.http.hooks.HttpHook
-import uk.gov.hmrc.play.http.ws._
+import uk.gov.hmrc.play.microservice.controller.BaseController
+import uk.gov.hmrc.play.http.logging.MdcLoggingExecutionContext._
+import play.api.mvc._
+import scala.concurrent.Future
 
-object WSHttp extends WSGet with WSPut with WSPost with WSDelete with WSPatch with AppName {
-  override val hooks: Seq[HttpHook] = NoneRequired
-}
+object RepositoryJobsController extends RepositoryJobsController
 
-object MicroserviceAuditConnector extends AuditConnector with RunMode {
-  override lazy val auditingConfig = LoadAuditingConfig(s"auditing")
+trait RepositoryJobsController extends BaseController {
+
+	def hello() = Action.async { implicit request =>
+		Future.successful(Ok("Hello world"))
+	}
 }
