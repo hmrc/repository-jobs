@@ -49,7 +49,7 @@ class JenkinsConnectorSpec extends UnitSpec with WireMockEndpoints with ScalaFut
       job.scm.userRemoteConfigs.head.url shouldBe "git@github:HMRC/address-lookup.git"
 
       job.allBuilds.length shouldBe 1
-      job.allBuilds.head shouldBe BuildResponse("1ccc1869ee8fcd8ff28701b5804c880106b38771",218869,"2017-02-08_16-32-42",126,"SUCCESS",1.486571562E12,"https://ci/job/address-lookup/126/","ci-slave-9")
+      job.allBuilds.head shouldBe BuildResponse("1ccc1869ee8fcd8ff28701b5804c880106b38771",218869,"2017-02-08_16-32-42",126,"SUCCESS",1486571562000L,"https://ci/job/address-lookup/126/","ci-slave-9")
 
     }
 

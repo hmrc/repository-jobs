@@ -25,7 +25,7 @@ import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
 case class Build(repositoryName: String, jobName: String, jobUrl: String, buildNumber: Int, result: String,
-                 timestamp: Double, duration: Int, buildUrl: String, builtOn: String)
+                 timestamp: Long, duration: Int, buildUrl: String, builtOn: String)
 
 object Build {
   val formats = Json.format[Build]

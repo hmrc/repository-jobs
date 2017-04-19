@@ -43,7 +43,7 @@ class RepositoryJobsService(repository: BuildsRepository, connector: JenkinsConn
   def jobsWithNewBuilds(buildsResponse: JenkinsJobsResponse, existingBuilds: Seq[Build]) = {
     buildsResponse.jobs.map { job =>
       job.copy(allBuilds = job.allBuilds.filterNot { b =>
-        existingBuilds.exists(e => key(job.name, e.timestamp) == key(job.name, b.timestamp))
+        existingBuilds.exists(e => key(e.jobName, e.timestamp) == key(job.name, b.timestamp))
       })
     }.filter(_.allBuilds.nonEmpty)
   }

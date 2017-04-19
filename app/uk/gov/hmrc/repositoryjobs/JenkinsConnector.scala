@@ -24,7 +24,7 @@ import uk.gov.hmrc.play.http.{HeaderCarrier, HttpGet}
 import scala.concurrent.Future
 
 case class BuildResponse(description: String, duration: Int, id: String, number: Int, result: String,
-                         timestamp: Double, url: String, builtOn: String)
+                         timestamp: Long, url: String, builtOn: String)
 
 case class UserRemoteConfig(url: String)
 case class Scm(userRemoteConfigs: Seq[UserRemoteConfig])

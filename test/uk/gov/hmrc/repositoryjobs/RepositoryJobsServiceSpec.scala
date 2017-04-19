@@ -19,6 +19,7 @@ package uk.gov.hmrc.repositoryjobs
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.mock.MockitoSugar
 import org.mockito.Mockito._
+import org.mockito.Matchers._
 import uk.gov.hmrc.play.test.UnitSpec
 
 import scala.concurrent.Future
@@ -36,12 +37,12 @@ class RepositoryJobsServiceSpec extends UnitSpec with ScalaFutures with MockitoS
       val anotherServiceGitConfig = Scm(Seq(UserRemoteConfig("another-service-repo")))
 
       val serviceBuilds = Seq(
-        BuildResponse("description-1", 218869, "123", 123, "SUCCESS", 1.486571562E12, "buildurl", "builton"),
-        BuildResponse("description-2", 218869, "124", 124, "SUCCESS", 1.486571562E12, "buildurl", "builton"))
+        BuildResponse("description-1", 218869, "123", 123, "SUCCESS", 1490611944493L, "buildurl", "builton"),
+        BuildResponse("description-2", 218869, "124", 124, "SUCCESS", 1486571225000L, "buildurl", "builton"))
 
       val anotherServiceBuilds = Seq(
-        BuildResponse("description-3", 218869, "223", 223, "SUCCESS", 1.486571562E12, "buildurl", "builton"),
-        BuildResponse("description-4", 218869, "224", 224, "SUCCESS", 1.486571562E12, "buildurl", "builton"))
+        BuildResponse("description-3", 218869, "223", 223, "SUCCESS", 1486481417000L, "buildurl", "builton"),
+        BuildResponse("description-4", 218869, "224", 224, "SUCCESS", 1486135916000L, "buildurl", "builton"))
 
       when(connector.getBuilds).thenReturn(Future.successful(JenkinsJobsResponse(Seq(
         Job("service", "jobUrl", serviceBuilds, serviceGitConfig),
@@ -53,14 +54,68 @@ class RepositoryJobsServiceSpec extends UnitSpec with ScalaFutures with MockitoS
       val service = new RepositoryJobsService(repository, connector)
       await(service.update())
 
-      verify(repository).add(Build("service-repo", "service", "jobUrl", 123, "SUCCESS", 1.486571562E12, 218869, "buildurl", "builton"))
-      verify(repository).add(Build("service-repo", "service", "jobUrl", 124, "SUCCESS", 1.486571562E12, 218869, "buildurl", "builton"))
-      verify(repository).add(Build("another-service-repo", "another-service", "anotherUrl", 223, "SUCCESS", 1.486571562E12, 218869, "buildurl", "builton"))
-      verify(repository).add(Build("another-service-repo", "another-service", "anotherUrl", 224, "SUCCESS", 1.486571562E12, 218869, "buildurl", "builton"))
+      verify(repository).add(Build("service-repo", "service", "jobUrl", 123, "SUCCESS", 1490611944493L, 218869, "buildurl", "builton"))
+      verify(repository).add(Build("service-repo", "service", "jobUrl", 124, "SUCCESS", 1486571225000L, 218869, "buildurl", "builton"))
+      verify(repository).add(Build("another-service-repo", "another-service", "anotherUrl", 223, "SUCCESS", 1486481417000L, 218869, "buildurl", "builton"))
+      verify(repository).add(Build("another-service-repo", "another-service", "anotherUrl", 224, "SUCCESS", 1486135916000L, 218869, "buildurl", "builton"))
     }
 
-    "Not update existing builds" in {
+    "Not add existing builds" in {
+      val connector = mock[JenkinsConnector]
+      val repository = mock[BuildsRepository]
 
+      val serviceGitConfig = Scm(Seq(UserRemoteConfig("service-repo")))
+
+      val serviceBuilds = Seq(
+        BuildResponse("description-1", 218869, "123", 123, "SUCCESS", 1490611944493L, "buildurl", "builton"),
+        BuildResponse("description-2", 218869, "124", 124, "SUCCESS", 1486571225000L, "buildurl", "builton"),
+        BuildResponse("description-3", 218869, "124", 125, "SUCCESS", 1486481417000L, "buildurl", "builton"))
+
+      when(connector.getBuilds).thenReturn(Future.successful(JenkinsJobsResponse(Seq(
+        Job("service", "jobUrl", serviceBuilds, serviceGitConfig)
+      ))))
+
+      when(repository.getAll).thenReturn(Future.successful(Seq(
+        Build("service-repo", "service", "jobUrl", 123, "SUCCESS", 1490611944493L, 218869, "buildurl", "builton"),
+        Build("service-repo", "service", "jobUrl", 124, "SUCCESS", 1486571225000L, 218869, "buildurl", "builton")
+      )))
+
+      val service = new RepositoryJobsService(repository, connector)
+      await(service.update())
+
+      verify(repository).add(Build("service-repo", "service", "jobUrl", 125, "SUCCESS", 1486481417000L, 218869, "buildurl", "builton"))
+      verify(repository, times(1)).add(any())
+    }
+
+    "uniquely identify jobs using the jobname and timestamp" in {
+
+      val connector = mock[JenkinsConnector]
+      val repository = mock[BuildsRepository]
+
+      val serviceGitConfig = Scm(Seq(UserRemoteConfig("service-repo")))
+      val anotherServiceGitConfig = Scm(Seq(UserRemoteConfig("another-service-repo")))
+
+      val serviceBuilds = Seq(
+        BuildResponse("description-1", 218869, "123", 123, "SUCCESS", 1490611944493L, "buildurl", "builton"),
+        BuildResponse("description-2", 218869, "123", 123, "SUCCESS", 1486571225000L, "buildurl", "builton"))
+
+      val anotherServiceBuilds = Seq(
+        BuildResponse("description-3", 218869, "223", 223, "SUCCESS", 1490611944493L, "buildurl", "builton"))
+
+      when(connector.getBuilds).thenReturn(Future.successful(JenkinsJobsResponse(Seq(
+        Job("service", "jobUrl", serviceBuilds, serviceGitConfig),
+        Job("another-service", "anotherUrl", anotherServiceBuilds, anotherServiceGitConfig)
+      ))))
+
+      when(repository.getAll).thenReturn(Future.successful(Seq(
+        Build("service-repo", "service", "jobUrl", 123, "SUCCESS", 1490611944493L, 218869, "buildurl", "builton")
+      )))
+
+      val service = new RepositoryJobsService(repository, connector)
+      await(service.update())
+
+      verify(repository).add(Build("service-repo", "service", "jobUrl", 123, "SUCCESS", 1486571225000L, 218869, "buildurl", "builton"))
+      verify(repository).add(Build("another-service-repo", "another-service", "anotherUrl", 223, "SUCCESS", 1490611944493L, 218869, "buildurl", "builton"))
 
     }
 
