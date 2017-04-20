@@ -50,8 +50,6 @@ class RepositoryJobsControllerTest extends UnitSpec with MockitoSugar with OneAp
     }
 
     "return 404 response if repository build not found" in {
-
-
       val controller = controllerWithData(Nil)
 
       val response = controller.builds("non-existing-repository").apply(FakeRequest())

@@ -52,7 +52,7 @@ class RepositoryJobsServiceSpec extends UnitSpec with ScalaFutures with MockitoS
       when(repository.getAll).thenReturn(Future.successful(Seq[Build]()))
 
       val service = new RepositoryJobsService(repository, connector)
-      await(service.update())
+      await(service.update)
 
       verify(repository).add(Build("service-repo", "service", "jobUrl", 123, "SUCCESS", 1490611944493L, 218869, "buildurl", "builton"))
       verify(repository).add(Build("service-repo", "service", "jobUrl", 124, "SUCCESS", 1486571225000L, 218869, "buildurl", "builton"))
@@ -81,7 +81,7 @@ class RepositoryJobsServiceSpec extends UnitSpec with ScalaFutures with MockitoS
       )))
 
       val service = new RepositoryJobsService(repository, connector)
-      await(service.update())
+      await(service.update)
 
       verify(repository).add(Build("service-repo", "service", "jobUrl", 125, "SUCCESS", 1486481417000L, 218869, "buildurl", "builton"))
       verify(repository, times(1)).add(any())
@@ -112,7 +112,7 @@ class RepositoryJobsServiceSpec extends UnitSpec with ScalaFutures with MockitoS
       )))
 
       val service = new RepositoryJobsService(repository, connector)
-      await(service.update())
+      await(service.update)
 
       verify(repository).add(Build("service-repo", "service", "jobUrl", 123, "SUCCESS", 1486571225000L, 218869, "buildurl", "builton"))
       verify(repository).add(Build("another-service-repo", "another-service", "anotherUrl", 223, "SUCCESS", 1490611944493L, 218869, "buildurl", "builton"))

@@ -28,6 +28,7 @@ import net.ceedubs.ficus.Ficus._
 import uk.gov.hmrc.play.filters.MicroserviceFilterSupport
 import play.api.i18n.Messages.Implicits._
 import play.api.Play.current
+import uk.gov.hmrc.repositoryjobs.config.RepositoryJobsConfig
 
 
 object ControllerConfiguration extends ControllerConfig {
@@ -57,4 +58,15 @@ object MicroserviceGlobal extends DefaultMicroserviceGlobal with RunMode with Mi
   override val microserviceAuditFilter = MicroserviceAuditFilter
 
   override val authFilter = None
+
+  override def onStart(app: Application): Unit = {
+    import scala.concurrent.duration._
+
+    if (RepositoryJobsConfig.schedulerEnabled) {
+//      UpdateScheduler.update(10 minutes)
+    }
+
+    super.onStart(app)
+  }
+
 }
