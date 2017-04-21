@@ -17,11 +17,12 @@
 package uk.gov.hmrc.repositoryjobs
 
 import play.api.Logger
-import play.api.libs.json.Json
+import play.api.libs.json.{JsError, JsSuccess, Json}
 import uk.gov.hmrc.play.http.logging.MdcLoggingExecutionContext.fromLoggingDetails
 import uk.gov.hmrc.play.http.{HeaderCarrier, HttpGet}
 
 import scala.concurrent.Future
+import scalaj.http.{Http, HttpResponse}
 
 case class BuildResponse(description: String, duration: Int, id: String, number: Int, result: String,
                          timestamp: Long, url: String, builtOn: String)
@@ -37,11 +38,11 @@ trait JenkinsConnector {
 
   def jenkinsBaseUrl: String
 
-  implicit val buildReads = Json.reads[BuildResponse]
-  implicit val userRemoteConfigReads = Json.reads[UserRemoteConfig]
-  implicit val scmReads = Json.reads[Scm]
-  implicit val jobReads = Json.reads[Job]
-  implicit val jenkinsReads = Json.reads[JenkinsJobsResponse]
+  implicit val buildReads = Json.format[BuildResponse]
+  implicit val userRemoteConfigReads = Json.format[UserRemoteConfig]
+  implicit val scmReads = Json.format[Scm]
+  implicit val jobReads = Json.format[Job]
+  implicit val jenkinsReads = Json.format[JenkinsJobsResponse]
 
   val buildsUrl = "/api/json?tree=" + java.net.URLEncoder.encode("jobs[name,url,allBuilds[id,description,duration,number,result,timestamp,url,builtOn],scm[userRemoteConfigs[url]]]", "UTF-8")
 
@@ -49,11 +50,34 @@ trait JenkinsConnector {
     implicit val hc = new HeaderCarrier()
 
     val url = jenkinsBaseUrl + buildsUrl
-    http.GET[JenkinsJobsResponse](url).recover {
-      case ex =>
-        Logger.error(s"An error occurred when connecting to $url: ${ex.getMessage}", ex)
-        throw ex
+//    val x: Future[String] = http.GET[String](url).recover {
+//      case ex =>
+//        Logger.error(s"An error occurred when connecting to $url: ${ex.getMessage}", ex)
+//        throw ex
+//    }
+
+    val x: HttpResponse[String] = Http(url).asString
+
+    val result = Json.parse(x.body.replaceAll("[\\^\\x00-\\x09\\x27\\x11\\x12\\x14-\\x1F\\x7F]", "")).validate[JenkinsJobsResponse]
+
+    result match {
+      case q: JsSuccess[JenkinsJobsResponse] => println(Json.prettyPrint(Json.toJson(q.get)))
+      case JsError(e) => println(e)
     }
+
+    println("*" * 100)
+    println(Json.prettyPrint(Json.toJson(result.get)))
+    println("*" * 100)
+
+
+    Future.successful(result.get)
+
+
+//    x.map(y => Json.parse(y.replaceAll("[\\x00-\\x09\\x27\\x11\\x12\\x14-\\x1F\\x7F]", "")).as[JenkinsJobsResponse])
+
+//    throw new RuntimeException("booo")
   }
+
+
 
 }

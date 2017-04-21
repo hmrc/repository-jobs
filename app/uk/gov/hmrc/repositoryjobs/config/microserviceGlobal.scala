@@ -63,7 +63,7 @@ object MicroserviceGlobal extends DefaultMicroserviceGlobal with RunMode with Mi
     import scala.concurrent.duration._
 
     if (RepositoryJobsConfig.schedulerEnabled) {
-//      UpdateScheduler.update(10 minutes)
+      Scheduler.startUpdatingJobsModel(10 minutes)
     }
 
     super.onStart(app)

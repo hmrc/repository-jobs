@@ -35,18 +35,22 @@ class RepositoryJobsService(repository: BuildsRepository, connector: JenkinsConn
 
 
   def findJobsWithNewBuilds(buildsResponse: JenkinsJobsResponse, existingBuilds: Seq[Build]): Future[Seq[Boolean]] = {
-    Future.sequence(buildsResponse.jobs.map { job =>
-      job.copy(allBuilds = job.allBuilds.filterNot { b =>
-        existingBuilds.exists(e => key(e.jobName, e.timestamp) == key(job.name, b.timestamp))
-      })
-    }.filter(_.allBuilds.nonEmpty).flatMap { job =>
-      val gitUrl = job.scm.userRemoteConfigs.head.url
-      val repoName = gitUrl.split("/").last.stripSuffix(".git")
 
-      job.allBuilds.map { b =>
-        repository.add(Build(repoName, job.name, job.url, b.number, b.result, b.timestamp, b.duration, b.url, b.builtOn))
+    def buildAlreadyExists(job: Job, buildResponse: BuildResponse) =
+      existingBuilds.exists(existingBuild => key(existingBuild.jobName, existingBuild.timestamp) == key(job.name, buildResponse.timestamp))
+
+    Future.sequence {
+      buildsResponse.jobs.map { (job: Job) =>
+        job.copy(allBuilds = job.allBuilds.filterNot(buildResponse => buildAlreadyExists(job, buildResponse)))
+      }.filter(_.allBuilds.nonEmpty).flatMap { job =>
+        val gitUrl = job.scm.userRemoteConfigs.head.url
+        val repoName = gitUrl.split("/").last.stripSuffix(".git")
+
+        job.allBuilds.map { b =>
+          repository.add(Build(repoName, job.name, job.url, b.number, b.result, b.timestamp, b.duration, b.url, b.builtOn))
+        }
+
       }
-
-    })
+    }
   }
 }

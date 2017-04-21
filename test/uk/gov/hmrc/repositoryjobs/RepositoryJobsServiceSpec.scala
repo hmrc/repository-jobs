@@ -33,6 +33,8 @@ class RepositoryJobsServiceSpec extends UnitSpec with ScalaFutures with MockitoS
       val connector = mock[JenkinsConnector]
       val repository = mock[BuildsRepository]
 
+      when(repository.add(any())).thenReturn(Future.successful(true))
+
       val serviceGitConfig = Scm(Seq(UserRemoteConfig("service-repo")))
       val anotherServiceGitConfig = Scm(Seq(UserRemoteConfig("another-service-repo")))
 
@@ -64,6 +66,9 @@ class RepositoryJobsServiceSpec extends UnitSpec with ScalaFutures with MockitoS
       val connector = mock[JenkinsConnector]
       val repository = mock[BuildsRepository]
 
+      when(repository.add(any())).thenReturn(Future.successful(true))
+
+
       val serviceGitConfig = Scm(Seq(UserRemoteConfig("service-repo")))
 
       val serviceBuilds = Seq(
@@ -91,6 +96,9 @@ class RepositoryJobsServiceSpec extends UnitSpec with ScalaFutures with MockitoS
 
       val connector = mock[JenkinsConnector]
       val repository = mock[BuildsRepository]
+
+      when(repository.add(any())).thenReturn(Future.successful(true))
+
 
       val serviceGitConfig = Scm(Seq(UserRemoteConfig("service-repo")))
       val anotherServiceGitConfig = Scm(Seq(UserRemoteConfig("another-service-repo")))
