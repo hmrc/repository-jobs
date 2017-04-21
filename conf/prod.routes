@@ -2,4 +2,7 @@
 ->         /repository-jobs              app.Routes
 ->         /                          health.Routes
 
+GET        /api/builds/hello-world             uk.gov.hmrc.repositoryjobs.RepositoryJobsController.hello
+GET        /api/builds/:repositoryName   uk.gov.hmrc.repositoryjobs.RepositoryJobsController.builds(repositoryName)
+
 GET        /admin/metrics             @com.kenshoo.play.metrics.MetricsController.metrics
