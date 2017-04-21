@@ -1,4 +1,2 @@
 # microservice specific routes
 
-GET        /hello-world             uk.gov.hmrc.repositoryjobs.RepositoryJobsController.hello
-GET        /build/:repositoryName   uk.gov.hmrc.repositoryjobs.RepositoryJobsController.builds(repositoryName)
