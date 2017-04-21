@@ -24,12 +24,13 @@ import uk.gov.hmrc.mongo.ReactiveRepository
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
-case class Build(repositoryName: String, jobName: String, jobUrl: String, buildNumber: Int, result: String,
-                 timestamp: Long, duration: Int, buildUrl: String, builtOn: String)
+case class Build(repositoryName: Option[String], jobName: Option[String], jobUrl: Option[String], buildNumber: Option[Int], result: Option[String],
+                 timestamp: Option[Long], duration: Option[Int], buildUrl: Option[String], builtOn: Option[String])
 
 object Build {
   implicit val formats = Json.format[Build]
 }
+
 
 trait BuildsRepository {
   def add(build: Build): Future[Boolean]
@@ -61,7 +62,7 @@ class BuildsMongoRepository (mongo: () => DB)
   def getAllByRepo : Future[Map[String, Seq[Build]]] =
   {
     findAll() map { data =>
-      data.groupBy(_.repositoryName)
+      data.groupBy(_.repositoryName.getOrElse("no-repo-name"))
     }
   }
 

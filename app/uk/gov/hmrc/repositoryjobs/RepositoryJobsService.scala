@@ -18,11 +18,16 @@ package uk.gov.hmrc.repositoryjobs
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
+import scala.util.Try
 
 class RepositoryJobsService(repository: BuildsRepository, connector: JenkinsConnector) {
 
-  def key(jobName: String, timestamp: Double): String = {
+  def key(jobName: String, timestamp: Long): String = {
     s"${jobName}_$timestamp"
+  }
+
+  def key(jobName: Option[String], timestamp: Option[Long]): String = {
+    key(jobName.getOrElse("no-job-name"), timestamp.getOrElse(0l))
   }
 
   def update: Future[Seq[Boolean]] =
@@ -36,20 +41,30 @@ class RepositoryJobsService(repository: BuildsRepository, connector: JenkinsConn
 
   def findJobsWithNewBuilds(buildsResponse: JenkinsJobsResponse, existingBuilds: Seq[Build]): Future[Seq[Boolean]] = {
 
-    def buildAlreadyExists(job: Job, buildResponse: BuildResponse) =
+    def buildAlreadyExists(job: Job, buildResponse: BuildResponse): Boolean =
       existingBuilds.exists(existingBuild => key(existingBuild.jobName, existingBuild.timestamp) == key(job.name, buildResponse.timestamp))
 
+    def collectJobsWithUnsavedBuilds() = buildsResponse.jobs.map { (job: Job) =>
+      job.copy(allBuilds = job.allBuilds.map(_.filterNot(buildResponse => buildAlreadyExists(job, buildResponse))))
+    }
+
+    def getGitUrl(job: Job) = job.scm match {
+      case Some(scm) => scm.userRemoteConfigs.fold("")(_.head.url.getOrElse(""))
+      case None => ""
+    }
+
     Future.sequence {
-      buildsResponse.jobs.map { (job: Job) =>
-        job.copy(allBuilds = job.allBuilds.filterNot(buildResponse => buildAlreadyExists(job, buildResponse)))
-      }.filter(_.allBuilds.nonEmpty).flatMap { job =>
-        val gitUrl = job.scm.userRemoteConfigs.head.url
-        val repoName = gitUrl.split("/").last.stripSuffix(".git")
+      val jobsWithUnsavedBuilds: Seq[Job] = collectJobsWithUnsavedBuilds()
 
-        job.allBuilds.map { b =>
-          repository.add(Build(repoName, job.name, job.url, b.number, b.result, b.timestamp, b.duration, b.url, b.builtOn))
+      jobsWithUnsavedBuilds.filter(_.allBuilds.nonEmpty).flatMap { job =>
+
+        val gitUrl = getGitUrl(job)
+
+        val repoName = Try(gitUrl.split("/").last.stripSuffix(".git")).toOption
+
+        job.allBuilds.fold(Seq.empty[Future[Boolean]]) { (allBuilds: Seq[BuildResponse]) =>
+          allBuilds.map(b => repository.add(Build(repoName, job.name, job.url, b.number, b.result, b.timestamp, b.duration, b.url, b.builtOn)))
         }
-
       }
     }
   }

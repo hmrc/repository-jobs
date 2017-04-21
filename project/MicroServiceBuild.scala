@@ -22,7 +22,8 @@ object MicroServiceBuild extends Build with MicroService {
     "uk.gov.hmrc" %% "logback-json-logger" % "3.1.0",
     "uk.gov.hmrc" %% "mongo-lock" % "4.0.0",
     "uk.gov.hmrc" %% "play-health" % "2.0.0",
-    "uk.gov.hmrc" %% "domain" % "4.1.0",
+    "uk.gov.hmrc" %% "domain" % "4.1.0"
+    ,
     "org.scalaj" %% "scalaj-http" % "2.3.0"
 
   )

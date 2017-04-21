@@ -17,19 +17,21 @@
 package uk.gov.hmrc.repositoryjobs
 
 import play.api.Logger
-import play.api.libs.json.{JsError, JsSuccess, Json}
+import play.api.libs.json.{JsError, JsResult, JsSuccess, Json}
+import uk.gov.hmrc.play.http
 import uk.gov.hmrc.play.http.logging.MdcLoggingExecutionContext.fromLoggingDetails
 import uk.gov.hmrc.play.http.{HeaderCarrier, HttpGet}
 
 import scala.concurrent.Future
+import scala.util.{Failure, Success, Try}
 import scalaj.http.{Http, HttpResponse}
 
-case class BuildResponse(description: String, duration: Int, id: String, number: Int, result: String,
-                         timestamp: Long, url: String, builtOn: String)
+case class BuildResponse(description: Option[String], duration: Option[Int], id: Option[String], number: Option[Int], result: Option[String],
+                         timestamp: Option[Long], url: Option[String], builtOn: Option[String])
 
-case class UserRemoteConfig(url: String)
-case class Scm(userRemoteConfigs: Seq[UserRemoteConfig])
-case class Job(name: String, url: String, allBuilds: Seq[BuildResponse], scm: Scm)
+case class UserRemoteConfig(url: Option[String])
+case class Scm(userRemoteConfigs: Option[Seq[UserRemoteConfig]])
+case class Job(name: Option[String], url: Option[String], allBuilds: Option[Seq[BuildResponse]], scm: Option[Scm])
 case class JenkinsJobsResponse(jobs: Seq[Job])
 
 trait JenkinsConnector {
@@ -50,7 +52,7 @@ trait JenkinsConnector {
     implicit val hc = new HeaderCarrier()
 
     val url = jenkinsBaseUrl + buildsUrl
-//    val x: Future[String] = http.GET[String](url).recover {
+//    val x: Future[http.HttpResponse] = http.GET[http.HttpResponse](url).recover {
 //      case ex =>
 //        Logger.error(s"An error occurred when connecting to $url: ${ex.getMessage}", ex)
 //        throw ex
@@ -58,7 +60,22 @@ trait JenkinsConnector {
 
     val x: HttpResponse[String] = Http(url).asString
 
-    val result = Json.parse(x.body.replaceAll("[\\^\\x00-\\x09\\x27\\x11\\x12\\x14-\\x1F\\x7F]", "")).validate[JenkinsJobsResponse]
+//    val result = Json.parse(x.body.replaceAll("[\\^\\x00-\\x09\\x27\\x11\\x12\\x14-\\x1F\\x7F]", "")).validate[JenkinsJobsResponse]
+//    val result = Json.parse(x.body.replaceAll("[\\x1F\\x7F]", "")).validate[JenkinsJobsResponse]
+//    val result = Try(Json.parse(x.body.replaceAll("[\\^\\x00-\\x09\\x27\\x11\\x12\\x14-\\x1F\\x7F]", "")).validate[JenkinsJobsResponse]) match {
+//    val result = Try(Json.parse(x.body.replaceAll("[\\x14-\\x1F\\x7F]", "")).validate[JenkinsJobsResponse]) match {
+
+    //!@TODO test the ctrl character removal
+    val result = Try(Json.parse(x.body.replaceAll("\\p{Cntrl}", "")).validate[JenkinsJobsResponse]) match {
+      case Success(r) => r
+      case Failure(t) =>
+        t.printStackTrace()
+        JsError("WTF!")
+
+    }
+    
+
+    
 
     result match {
       case q: JsSuccess[JenkinsJobsResponse] => println(Json.prettyPrint(Json.toJson(q.get)))
