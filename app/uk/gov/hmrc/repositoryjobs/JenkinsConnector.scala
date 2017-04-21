@@ -18,13 +18,11 @@ package uk.gov.hmrc.repositoryjobs
 
 import play.api.Logger
 import play.api.libs.json.{JsError, JsResult, JsSuccess, Json}
-import uk.gov.hmrc.play.http
 import uk.gov.hmrc.play.http.logging.MdcLoggingExecutionContext.fromLoggingDetails
-import uk.gov.hmrc.play.http.{HeaderCarrier, HttpGet}
+import uk.gov.hmrc.play.http.{HeaderCarrier, HttpGet, HttpResponse}
 
 import scala.concurrent.Future
 import scala.util.{Failure, Success, Try}
-import scalaj.http.{Http, HttpResponse}
 
 case class BuildResponse(description: Option[String], duration: Option[Int], id: Option[String], number: Option[Int], result: Option[String],
                          timestamp: Option[Long], url: Option[String], builtOn: Option[String])
@@ -52,47 +50,23 @@ trait JenkinsConnector {
     implicit val hc = new HeaderCarrier()
 
     val url = jenkinsBaseUrl + buildsUrl
-//    val x: Future[http.HttpResponse] = http.GET[http.HttpResponse](url).recover {
-//      case ex =>
-//        Logger.error(s"An error occurred when connecting to $url: ${ex.getMessage}", ex)
-//        throw ex
-//    }
-
-    val x: HttpResponse[String] = Http(url).asString
-
-//    val result = Json.parse(x.body.replaceAll("[\\^\\x00-\\x09\\x27\\x11\\x12\\x14-\\x1F\\x7F]", "")).validate[JenkinsJobsResponse]
-//    val result = Json.parse(x.body.replaceAll("[\\x1F\\x7F]", "")).validate[JenkinsJobsResponse]
-//    val result = Try(Json.parse(x.body.replaceAll("[\\^\\x00-\\x09\\x27\\x11\\x12\\x14-\\x1F\\x7F]", "")).validate[JenkinsJobsResponse]) match {
-//    val result = Try(Json.parse(x.body.replaceAll("[\\x14-\\x1F\\x7F]", "")).validate[JenkinsJobsResponse]) match {
 
     //!@TODO test the ctrl character removal
-    val result = Try(Json.parse(x.body.replaceAll("\\p{Cntrl}", "")).validate[JenkinsJobsResponse]) match {
-      case Success(r) => r
-      case Failure(t) =>
-        t.printStackTrace()
-        JsError("WTF!")
+    val result = http.GET[HttpResponse](url).recover {
+      case ex =>
+        Logger.error(s"An error occurred when connecting to $url: ${ex.getMessage}", ex)
+        throw ex
+    }.map(httpResponse => Try(Json.parse(httpResponse.body.replaceAll("\\p{Cntrl}", "")).validate[JenkinsJobsResponse]) match {
+      case Success(jsResult) => jsResult
+      case Failure(t) => JsError(t.getMessage)
+    })
 
+    result.map {
+      case q: JsSuccess[JenkinsJobsResponse] => //println(Json.prettyPrint(Json.toJson(q.get)))
+        q.get
+      case JsError(e) =>
+        throw new RuntimeException(s"${e.toString()}")
     }
-    
-
-    
-
-    result match {
-      case q: JsSuccess[JenkinsJobsResponse] => println(Json.prettyPrint(Json.toJson(q.get)))
-      case JsError(e) => println(e)
-    }
-
-    println("*" * 100)
-    println(Json.prettyPrint(Json.toJson(result.get)))
-    println("*" * 100)
-
-
-    Future.successful(result.get)
-
-
-//    x.map(y => Json.parse(y.replaceAll("[\\x00-\\x09\\x27\\x11\\x12\\x14-\\x1F\\x7F]", "")).as[JenkinsJobsResponse])
-
-//    throw new RuntimeException("booo")
   }
 
 

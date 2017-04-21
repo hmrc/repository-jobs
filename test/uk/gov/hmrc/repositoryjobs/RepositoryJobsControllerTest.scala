@@ -24,7 +24,7 @@ import org.scalatestplus.play.OneAppPerSuite
 import play.api.test.FakeRequest
 import play.api.test.Helpers._
 import uk.gov.hmrc.play.test.UnitSpec
-
+import cats.syntax.option._
 
 class RepositoryJobsControllerTest extends UnitSpec with MockitoSugar with OneAppPerSuite {
 
@@ -32,8 +32,8 @@ class RepositoryJobsControllerTest extends UnitSpec with MockitoSugar with OneAp
 
     "return a json formatted response containing info about the builds for that repository" in {
 
-      val build1 = Build("repo-name", "repository-abcd", "job.url", 1, "result-xyz", 1l, 20, "build.url", "built-on")
-      val build2 = Build("repo-name", "repository-abcd", "job.url", 5, "result-xyz", 2l, 30, "build.url", "built-on")
+      val build1 = Build("repo-name".some, "repository-abcd".some, "job.url".some, 1.some, "result-xyz".some, 1l.some, 20.some, "build.url".some, "built-on".some)
+      val build2 = Build("repo-name".some, "repository-abcd".some, "job.url".some, 5.some, "result-xyz".some, 2l.some, 30.some, "build.url".some, "built-on".some)
 
       val controller = controllerWithData(Seq(build1, build2))
 

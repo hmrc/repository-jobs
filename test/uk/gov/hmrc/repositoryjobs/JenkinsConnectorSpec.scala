@@ -17,12 +17,14 @@
 package uk.gov.hmrc.repositoryjobs
 
 import com.github.tomakehurst.wiremock.http.RequestMethod._
+import org.scalatest.{Matchers, OptionValues, WordSpec}
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.time.{Millis, Span}
 import org.scalatestplus.play.OneAppPerSuite
 import uk.gov.hmrc.play.test.UnitSpec
+import cats.syntax.option._
 
-class JenkinsConnectorSpec extends UnitSpec with WireMockEndpoints with ScalaFutures with OneAppPerSuite {
+class JenkinsConnectorSpec extends WordSpec with Matchers with WireMockEndpoints with ScalaFutures with OneAppPerSuite with OptionValues {
   implicit val defaultPatienceConfig = new PatienceConfig(Span(200, Millis), Span(15, Millis))
 
   "Getting all jobs from jenkins" should {
@@ -41,15 +43,23 @@ class JenkinsConnectorSpec extends UnitSpec with WireMockEndpoints with ScalaFut
 
       val result = connector.getBuilds
 
-      result.jobs.length shouldBe 1
+      result.futureValue.jobs.length shouldBe 1
 
-      val job = result.jobs.head
-      job.name shouldBe "address-lookup"
-      job.url shouldBe "https://ci/job/address-lookup/"
-      job.scm.userRemoteConfigs.head.url shouldBe "git@github:HMRC/address-lookup.git"
+      val job = result.futureValue.jobs.head
+      job.name shouldBe "address-lookup".some
+      job.url shouldBe "https://ci/job/address-lookup/".some
+      job.scm.value.userRemoteConfigs.value.head.url shouldBe "git@github:HMRC/address-lookup.git".some
 
-      job.allBuilds.length shouldBe 1
-      job.allBuilds.head shouldBe BuildResponse("1ccc1869ee8fcd8ff28701b5804c880106b38771",218869,"2017-02-08_16-32-42",126,"SUCCESS",1486571562000L,"https://ci/job/address-lookup/126/","ci-slave-9")
+      job.allBuilds.value.length shouldBe 1
+      job.allBuilds.value.head shouldBe BuildResponse(
+        "1ccc1869ee8fcd8ff28701b5804c880106b38771".some,
+        218869.some,
+        "2017-02-08_16-32-42".some,
+        126.some,
+        "SUCCESS".some,
+        1486571562000L.some,
+        "https://ci/job/address-lookup/126/".some,
+        "ci-slave-9".some)
 
     }
 
