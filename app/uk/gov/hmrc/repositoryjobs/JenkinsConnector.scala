@@ -51,7 +51,6 @@ trait JenkinsConnector {
 
     val url = jenkinsBaseUrl + buildsUrl
 
-    //!@TODO test the ctrl character removal
     val result = http.GET[HttpResponse](url).recover {
       case ex =>
         Logger.error(s"An error occurred when connecting to $url: ${ex.getMessage}", ex)
@@ -62,8 +61,8 @@ trait JenkinsConnector {
     })
 
     result.map {
-      case q: JsSuccess[JenkinsJobsResponse] => //println(Json.prettyPrint(Json.toJson(q.get)))
-        q.get
+      case JsSuccess(jenkinsResponse, _) => //println(Json.prettyPrint(Json.toJson(jenkinsResponse)))
+        jenkinsResponse
       case JsError(e) =>
         throw new RuntimeException(s"${e.toString()}")
     }

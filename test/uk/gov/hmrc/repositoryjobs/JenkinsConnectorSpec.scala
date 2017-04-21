@@ -63,6 +63,27 @@ class JenkinsConnectorSpec extends WordSpec with Matchers with WireMockEndpoints
 
     }
 
+    "handle control characters in the response body" in {
+
+      val connector = new JenkinsConnector {
+        override val http = WSHttp
+        override def jenkinsBaseUrl: String = endpointMockUrl
+      }
+
+      serviceEndpoint(
+        GET,
+        connector.buildsUrl,
+        willRespondWith = (200, Some(JsonData.jenkinsJobsResponseWithControlCharacters)))
+
+      val result = connector.getBuilds
+
+      result.futureValue.jobs.length shouldBe 1
+
+      val job = result.futureValue.jobs.head
+      job.name shouldBe "address-lookup".some
+
+    }
+
   }
 
 }
