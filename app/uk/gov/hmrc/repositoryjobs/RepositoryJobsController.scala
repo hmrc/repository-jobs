@@ -38,7 +38,7 @@ trait RepositoryJobsController extends BaseController {
 			case builds => Ok(Json.toJson(builds))
 		}
 	}
-
+	
 	def hello() = Action.async { implicit request =>
 		Future.successful(Ok("Hello world"))
 	}

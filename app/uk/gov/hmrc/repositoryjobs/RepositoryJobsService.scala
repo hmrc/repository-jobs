@@ -34,18 +34,18 @@ class RepositoryJobsService(repository: BuildsRepository, connector: JenkinsConn
     for {
       buildsResponse <- connector.getBuilds
       existingBuilds <- repository.getAll
-      jobsWithNewBuilds <- findJobsWithNewBuilds(buildsResponse, existingBuilds)
+      jobsWithNewBuilds <- writeJobsWithNewBuilds(buildsResponse, existingBuilds)
     } yield
       jobsWithNewBuilds
 
 
-  def findJobsWithNewBuilds(buildsResponse: JenkinsJobsResponse, existingBuilds: Seq[Build]): Future[Seq[Boolean]] = {
+  def writeJobsWithNewBuilds(buildsResponse: JenkinsJobsResponse, existingBuilds: Seq[Build]): Future[Seq[Boolean]] = {
 
     def buildAlreadyExists(job: Job, buildResponse: BuildResponse): Boolean =
       existingBuilds.exists(existingBuild => key(existingBuild.jobName, existingBuild.timestamp) == key(job.name, buildResponse.timestamp))
 
     def collectJobsWithUnsavedBuilds() = buildsResponse.jobs.map { (job: Job) =>
-      job.copy(allBuilds = job.allBuilds.map(_.filterNot(buildResponse => buildAlreadyExists(job, buildResponse))))
+      job.copy(allBuilds = job.allBuilds.map(_.filterNot(buildResponse => buildAlreadyExists(job, buildResponse)).filter(_.result.isDefined)))
     }
 
     def getGitUrl(job: Job) = job.scm match {
