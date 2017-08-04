@@ -62,15 +62,15 @@ class BuildsMongoRepositorySpec extends UnitSpec with MongoSpecSupport with Befo
       val builds: Seq[Build] = await(buildsRepository.getForRepository("cato-acceptance-tests"))
 
       builds.size shouldBe 1
-      builds.head.repositoryName shouldBe "cato-acceptance-tests"
-      builds.head.jobName shouldBe "cato-acceptance-tests"
-      builds.head.jobUrl shouldBe "http://ci/job/cato-acceptance-tests/"
-      builds.head.buildNumber shouldBe 123
-      builds.head.result shouldBe "SUCCESS"
-      builds.head.timestamp shouldBe 1.486571562E12
-      builds.head.duration shouldBe 218869
-      builds.head.buildUrl shouldBe "https://ci/job/cato-acceptance-tests/123/"
-      builds.head.builtOn shouldBe "ci-slave-9"
+      builds.head.repositoryName.get shouldBe "cato-acceptance-tests"
+      builds.head.jobName.get shouldBe "cato-acceptance-tests"
+      builds.head.jobUrl.get shouldBe "http://ci/job/cato-acceptance-tests/"
+      builds.head.buildNumber.get shouldBe 123
+      builds.head.result.get shouldBe "SUCCESS"
+      builds.head.timestamp.get shouldBe 1.486571562E12
+      builds.head.duration.get shouldBe 218869
+      builds.head.buildUrl.get shouldBe "https://ci/job/cato-acceptance-tests/123/"
+      builds.head.builtOn.get shouldBe "ci-slave-9"
 
     }
   }
@@ -107,27 +107,27 @@ class BuildsMongoRepositorySpec extends UnitSpec with MongoSpecSupport with Befo
 
       val catoBuilds = builds("cato-acceptance-tests")
       catoBuilds.size shouldBe 1
-      catoBuilds.head.repositoryName shouldBe "cato-acceptance-tests"
-      catoBuilds.head.jobName shouldBe "cato-acceptance-tests"
-      catoBuilds.head.jobUrl shouldBe "http://ci/job/cato-acceptance-tests/"
-      catoBuilds.head.buildNumber shouldBe 123
-      catoBuilds.head.result shouldBe "SUCCESS"
-      catoBuilds.head.timestamp shouldBe 1.486571562E12
-      catoBuilds.head.duration shouldBe 218869
-      catoBuilds.head.buildUrl shouldBe "https://ci/job/cato-acceptance-tests/123/"
-      catoBuilds.head.builtOn shouldBe "ci-slave-9"
+      catoBuilds.head.repositoryName.get shouldBe "cato-acceptance-tests"
+      catoBuilds.head.jobName.get shouldBe "cato-acceptance-tests"
+      catoBuilds.head.jobUrl.get shouldBe "http://ci/job/cato-acceptance-tests/"
+      catoBuilds.head.buildNumber.get shouldBe 123
+      catoBuilds.head.result.get shouldBe "SUCCESS"
+      catoBuilds.head.timestamp.get shouldBe 1.486571562E12
+      catoBuilds.head.duration.get shouldBe 218869
+      catoBuilds.head.buildUrl.get shouldBe "https://ci/job/cato-acceptance-tests/123/"
+      catoBuilds.head.builtOn.get shouldBe "ci-slave-9"
 
       val ihtBuilds = builds("iht-acceptance-tests")
       ihtBuilds.size shouldBe 1
-      ihtBuilds.head.repositoryName shouldBe "iht-acceptance-tests"
-      ihtBuilds.head.jobName shouldBe "iht-acceptance-tests"
-      ihtBuilds.head.jobUrl shouldBe "https://ci/job/iht/"
-      ihtBuilds.head.buildNumber shouldBe 234
-      ihtBuilds.head.result shouldBe "SUCCESS"
-      ihtBuilds.head.timestamp shouldBe 1.486571562E12
-      ihtBuilds.head.duration shouldBe 218869
-      ihtBuilds.head.buildUrl shouldBe "https://ci/job/iht/234/"
-      ihtBuilds.head.builtOn shouldBe "ci-slave-9"
+      ihtBuilds.head.repositoryName.get shouldBe "iht-acceptance-tests"
+      ihtBuilds.head.jobName.get shouldBe "iht-acceptance-tests"
+      ihtBuilds.head.jobUrl.get shouldBe "https://ci/job/iht/"
+      ihtBuilds.head.buildNumber.get shouldBe 234
+      ihtBuilds.head.result.get shouldBe "SUCCESS"
+      ihtBuilds.head.timestamp.get shouldBe 1.486571562E12
+      ihtBuilds.head.duration.get shouldBe 218869
+      ihtBuilds.head.buildUrl.get shouldBe "https://ci/job/iht/234/"
+      ihtBuilds.head.builtOn.get shouldBe "ci-slave-9"
     }
 
   }
