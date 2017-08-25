@@ -17,9 +17,9 @@
 package uk.gov.hmrc.repositoryjobs
 
 import play.api.Logger
-import play.api.libs.json.{JsError, JsResult, JsSuccess, Json}
+import play.api.libs.json.{JsError, JsSuccess, Json}
+import uk.gov.hmrc.http.{HeaderCarrier, HttpGet, HttpResponse}
 import uk.gov.hmrc.play.http.logging.MdcLoggingExecutionContext.fromLoggingDetails
-import uk.gov.hmrc.play.http.{HeaderCarrier, HttpGet, HttpResponse}
 
 import scala.concurrent.Future
 import scala.util.{Failure, Success, Try}
