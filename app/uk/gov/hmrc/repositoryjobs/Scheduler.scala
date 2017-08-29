@@ -40,11 +40,11 @@ import play.Logger
 import play.libs.Akka
 import play.modules.reactivemongo.MongoDbConnection
 import uk.gov.hmrc.lock.{LockKeeper, LockMongoRepository, LockRepository}
-import uk.gov.hmrc.play.http.HttpGet
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 import scala.concurrent.duration.FiniteDuration
+import uk.gov.hmrc.http.HttpGet
 
 sealed trait JobResult
 case class Error(message: String, ex : Throwable) extends JobResult {
