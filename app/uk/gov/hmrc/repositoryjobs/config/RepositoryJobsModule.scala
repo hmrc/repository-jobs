@@ -16,20 +16,13 @@
 
 package uk.gov.hmrc.repositoryjobs.config
 
-import javax.inject.{Inject, Singleton}
+import com.google.inject.AbstractModule
+import uk.gov.hmrc.repositoryjobs.JobsUpdateScheduler
 
-import play.api.{Configuration, Play}
+class RepositoryJobsModule extends AbstractModule {
 
-
-@Singleton
-class RepositoryJobsConfig @Inject()(configuration: Configuration) {
-
-
-  val schedulerEnabled = configuration.getBoolean("scheduler.enabled").getOrElse(false)
-
-  lazy val jobsApiBase: String = config("jobs.api.url").get
-
-  private def config(path: String) = configuration.getString(s"$path")
-
+  override def configure(): Unit = {
+    bind(classOf[JobsUpdateScheduler]).asEagerSingleton()
+  }
 
 }

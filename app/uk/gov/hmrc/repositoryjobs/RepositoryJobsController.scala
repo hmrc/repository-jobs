@@ -16,21 +16,18 @@
 
 package uk.gov.hmrc.repositoryjobs
 
+import javax.inject.{Inject, Singleton}
+
 import play.api.libs.json.Json
-import uk.gov.hmrc.play.microservice.controller.BaseController
-import uk.gov.hmrc.play.http.logging.MdcLoggingExecutionContext._
 import play.api.mvc._
-import play.modules.reactivemongo.MongoDbConnection
+import uk.gov.hmrc.play.bootstrap.controller.BaseController
+import uk.gov.hmrc.play.http.logging.MdcLoggingExecutionContext._
 
 import scala.concurrent.Future
 
-object RepositoryJobsController extends RepositoryJobsController with MongoDbConnection {
-	override val buildRepository: BuildsRepository with Object = new BuildsMongoRepository(db)
-}
 
-trait RepositoryJobsController extends BaseController {
-	val buildRepository: BuildsRepository
-
+@Singleton
+class RepositoryJobsController @Inject() (buildRepository: BuildsRepository) extends BaseController {
 
 	def builds(repositoryName: String) = Action.async { implicit request =>
 		buildRepository.getForRepository(repositoryName).map {
@@ -40,6 +37,6 @@ trait RepositoryJobsController extends BaseController {
 	}
 	
 	def hello() = Action.async { implicit request =>
-		Future.successful(Ok("Hello world"))
+			Future.successful(Ok("Hello world"))
 	}
 }

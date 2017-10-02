@@ -16,11 +16,14 @@
 
 package uk.gov.hmrc.repositoryjobs
 
+import javax.inject.{Inject, Singleton}
+
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 import scala.util.Try
 
-class RepositoryJobsService(repository: BuildsRepository, connector: JenkinsConnector) {
+@Singleton
+class RepositoryJobsService @Inject()(repository: BuildsRepository, connector: JenkinsConnector) {
 
   def key(jobName: String, timestamp: Long): String = {
     s"${jobName}_$timestamp"
