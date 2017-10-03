@@ -16,11 +16,16 @@
 
 package uk.gov.hmrc.repositoryjobs
 
+import javax.inject.{Inject, Singleton}
+
+import play.Logger
+
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 import scala.util.Try
 
-class RepositoryJobsService(repository: BuildsRepository, connector: JenkinsConnector) {
+@Singleton
+class RepositoryJobsService @Inject()(repository: BuildsRepository, connector: JenkinsConnector) {
 
   def key(jobName: String, timestamp: Long): String = {
     s"${jobName}_$timestamp"
@@ -30,14 +35,17 @@ class RepositoryJobsService(repository: BuildsRepository, connector: JenkinsConn
     key(jobName.getOrElse("no-job-name"), timestamp.getOrElse(0l))
   }
 
+  
   def update: Future[Seq[Boolean]] =
-    for {
+    (for {
       buildsResponse <- connector.getBuilds
       existingBuilds <- repository.getAll
       jobsWithNewBuilds <- writeJobsWithNewBuilds(buildsResponse, existingBuilds)
-    } yield
-      jobsWithNewBuilds
-
+    } yield jobsWithNewBuilds) recover {
+      case ex =>
+        Logger.error("unable to update repository jobs", ex)
+        throw ex
+    }
 
   def writeJobsWithNewBuilds(buildsResponse: JenkinsJobsResponse, existingBuilds: Seq[Build]): Future[Seq[Boolean]] = {
 

@@ -90,8 +90,6 @@ class RepositoryJobsServiceSpec extends UnitSpec with ScalaFutures with MockitoS
 
       verify(repository).add(Build("service-repo".some, "service".some, "jobUrl".some, 123.some, "SOME_RESULT".some, 1490611944493L.some, 218869.some, "buildurl".some, "builton".some))
       verify(repository).add(Build("service-repo".some, "service".some, "jobUrl".some, 124.some, "SOME_OTHER_RESULT".some, 1486571225000L.some, 218869.some, "buildurl".some, "builton".some))
-//      verify(repository).getAll
-//      verifyNoMoreInteractions(repository)
       verify(repository, times(2)).add(any())
 
     }

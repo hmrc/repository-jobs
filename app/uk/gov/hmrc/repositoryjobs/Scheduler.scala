@@ -33,12 +33,14 @@
 package uk.gov.hmrc.repositoryjobs
 
 import java.util.concurrent.TimeUnit
+import javax.inject.{Inject, Singleton}
 
 import akka.actor.ActorSystem
+import com.kenshoo.play.metrics.Metrics
 import org.joda.time.Duration
 import play.Logger
 import play.libs.Akka
-import play.modules.reactivemongo.MongoDbConnection
+import play.modules.reactivemongo.{MongoDbConnection, ReactiveMongoComponent}
 import uk.gov.hmrc.lock.{LockKeeper, LockMongoRepository, LockRepository}
 
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -57,35 +59,23 @@ case class Info(message: String) extends JobResult {
   Logger.info(message)
 }
 
-trait DefaultSchedulerDependencies extends MongoDbConnection with JenkinsConnector {
-  import uk.gov.hmrc.repositoryjobs.config.RepositoryJobsConfig._
 
-
-  def repositoryJobsService:RepositoryJobsService
-
-  val akkaSystem = Akka.system()
-
-  override def jenkinsBaseUrl: String = jobsApiBase
-  override def http: HttpGet = WSHttp
-
-}
-
-private[repositoryjobs] abstract class Scheduler extends LockKeeper with DefaultMetricsRegistry {
-  self: MongoDbConnection  =>
-
-  def akkaSystem: ActorSystem
-  def repositoryJobsService: RepositoryJobsService
+@Singleton
+class Scheduler @Inject()(repositoryJobsService: RepositoryJobsService,
+                          reactiveMongoComponent: ReactiveMongoComponent,
+                          metrics: Metrics,
+                          actorSystem: ActorSystem) extends LockKeeper  {
 
   override def lockId: String = "repository-jobs-scheduled-job"
 
-  override def repo: LockRepository = LockMongoRepository(db)
+  override def repo: LockRepository = LockMongoRepository(reactiveMongoComponent.mongoConnector.db)
 
   override val forceLockReleaseAfter: Duration = Duration.standardMinutes(15)
 
   def startUpdatingJobsModel(interval: FiniteDuration): Unit = {
     Logger.info(s"Initialising mongo update every $interval")
 
-    akkaSystem.scheduler.schedule(FiniteDuration(1, TimeUnit.SECONDS), interval) {
+    actorSystem.scheduler.schedule(FiniteDuration(1, TimeUnit.SECONDS), interval) {
       updateRepositoryJobsModel
     }
   }
@@ -100,8 +90,8 @@ private[repositoryjobs] abstract class Scheduler extends LockKeeper with Default
         val failureCount = result.count(r => !r)
         val successCount = total - failureCount
 
-        defaultMetricsRegistry.counter("scheduler.success").inc(successCount)
-        defaultMetricsRegistry.counter("scheduler.failure").inc(failureCount)
+        metrics.defaultRegistry.counter("scheduler.success").inc(successCount)
+        metrics.defaultRegistry.counter("scheduler.failure").inc(failureCount)
 
         Info(s"Added $successCount and encountered $failureCount failures")
       }.recover { case ex =>
@@ -113,12 +103,6 @@ private[repositoryjobs] abstract class Scheduler extends LockKeeper with Default
       }
     }
   }
-
-}
-
-object Scheduler extends Scheduler with DefaultSchedulerDependencies {
-
-  override val repositoryJobsService = new RepositoryJobsService(new BuildsMongoRepository(db), this)
 
 }
 

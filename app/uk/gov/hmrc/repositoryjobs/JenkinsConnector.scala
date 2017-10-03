@@ -16,10 +16,14 @@
 
 package uk.gov.hmrc.repositoryjobs
 
+import javax.inject.{Inject, Singleton}
+
 import play.api.Logger
 import play.api.libs.json.{JsError, JsSuccess, Json}
 import uk.gov.hmrc.http.{HeaderCarrier, HttpGet, HttpResponse}
+import uk.gov.hmrc.play.bootstrap.http.HttpClient
 import uk.gov.hmrc.play.http.logging.MdcLoggingExecutionContext.fromLoggingDetails
+import uk.gov.hmrc.repositoryjobs.config.RepositoryJobsConfig
 
 import scala.concurrent.Future
 import scala.util.{Failure, Success, Try}
@@ -32,11 +36,11 @@ case class Scm(userRemoteConfigs: Option[Seq[UserRemoteConfig]])
 case class Job(name: Option[String], url: Option[String], allBuilds: Option[Seq[BuildResponse]], scm: Option[Scm])
 case class JenkinsJobsResponse(jobs: Seq[Job])
 
-trait JenkinsConnector {
+@Singleton
+class JenkinsConnector @Inject()(http: HttpClient, repositoryJobsConfig: RepositoryJobsConfig){
 
-  def http: HttpGet
 
-  def jenkinsBaseUrl: String
+  def jenkinsBaseUrl: String = repositoryJobsConfig.jobsApiBase
 
   implicit val buildReads = Json.format[BuildResponse]
   implicit val userRemoteConfigReads = Json.format[UserRemoteConfig]
@@ -61,7 +65,7 @@ trait JenkinsConnector {
     })
 
     result.map {
-      case JsSuccess(jenkinsResponse, _) => //println(Json.prettyPrint(Json.toJson(jenkinsResponse)))
+      case JsSuccess(jenkinsResponse, _) =>
         jenkinsResponse
       case JsError(e) =>
         throw new RuntimeException(s"${e.toString()}")
