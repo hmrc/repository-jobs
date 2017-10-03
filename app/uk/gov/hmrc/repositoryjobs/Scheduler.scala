@@ -59,27 +59,12 @@ case class Info(message: String) extends JobResult {
   Logger.info(message)
 }
 
-//trait DefaultSchedulerDependencies extends MongoDbConnection with JenkinsConnector {
-//  import uk.gov.hmrc.repositoryjobs.config.RepositoryJobsConfig._
-//
-//
-//  def repositoryJobsService: RepositoryJobsService
-//
-//  val akkaSystem = Akka.system()
-//
-//  override def jenkinsBaseUrl: String = jobsApiBase
-//  override def http: HttpGet = WSHttp
-//
-//}
 
 @Singleton
 class Scheduler @Inject()(repositoryJobsService: RepositoryJobsService,
                           reactiveMongoComponent: ReactiveMongoComponent,
                           metrics: Metrics,
                           actorSystem: ActorSystem) extends LockKeeper  {
-
-//  def akkaSystem: ActorSystem
-//  def repositoryJobsService: RepositoryJobsService
 
   override def lockId: String = "repository-jobs-scheduled-job"
 
@@ -120,10 +105,4 @@ class Scheduler @Inject()(repositoryJobsService: RepositoryJobsService,
   }
 
 }
-
-//object Scheduler extends Scheduler with DefaultSchedulerDependencies {
-//
-//  override val repositoryJobsService = new RepositoryJobsService(new BuildsMongoRepository(db), this)
-//
-//}
 

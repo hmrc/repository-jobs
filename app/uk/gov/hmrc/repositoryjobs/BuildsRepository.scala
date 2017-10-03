@@ -34,13 +34,6 @@ object Build {
 }
 
 
-//trait BuildsRepository {
-//  def add(build: Build): Future[Boolean]
-//  def getForRepository(repositoryName: String): Future[Seq[Build]]
-//  def getAllByRepo : Future[Map[String, Seq[Build]]]
-//  def getAll: Future[Seq[Build]]
-//}
-
 @Singleton
 class BuildsRepository @Inject()(mongo: ReactiveMongoComponent)
   extends ReactiveRepository[Build, BSONObjectID] (

@@ -65,7 +65,7 @@ class JenkinsConnector @Inject()(http: HttpClient, repositoryJobsConfig: Reposit
     })
 
     result.map {
-      case JsSuccess(jenkinsResponse, _) => //println(Json.prettyPrint(Json.toJson(jenkinsResponse)))
+      case JsSuccess(jenkinsResponse, _) =>
         jenkinsResponse
       case JsError(e) =>
         throw new RuntimeException(s"${e.toString()}")

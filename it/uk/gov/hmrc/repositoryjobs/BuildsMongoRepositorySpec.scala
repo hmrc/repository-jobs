@@ -16,7 +16,6 @@
 
 package uk.gov.hmrc.repositoryjobs
 
-import org.mockito.Mockito
 import org.mockito.Mockito.when
 import org.scalatest.BeforeAndAfterEach
 import org.scalatest.mock.MockitoSugar
@@ -26,7 +25,6 @@ import uk.gov.hmrc.mongo.{MongoConnector, MongoSpecSupport}
 import uk.gov.hmrc.play.test.UnitSpec
 
 import scala.concurrent.ExecutionContext.Implicits.global
-//import reactivemongo.json._
 import reactivemongo.play.json.ImplicitBSONHandlers._
 
 class BuildsMongoRepositorySpec extends UnitSpec with MongoSpecSupport with BeforeAndAfterEach with MockitoSugar  {
