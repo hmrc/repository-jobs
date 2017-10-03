@@ -14,14 +14,15 @@
  * limitations under the License.
  */
 
-package uk.gov.hmrc.repositoryjobs
+package uk.gov.hmrc.repositoryjobs.config
 
+import com.google.inject.AbstractModule
+import uk.gov.hmrc.repositoryjobs.JobsUpdateScheduler
 
-import com.kenshoo.play.metrics.{Metrics, MetricsImpl}
-import play.api.Play
+class RepositoryJobsModule extends AbstractModule {
 
+  override def configure(): Unit = {
+    bind(classOf[JobsUpdateScheduler]).asEagerSingleton()
+  }
 
-trait DefaultMetricsRegistry {
-  private val metrics: Metrics = Play.current.injector.instanceOf[Metrics]
-  val defaultMetricsRegistry = metrics.defaultRegistry
 }

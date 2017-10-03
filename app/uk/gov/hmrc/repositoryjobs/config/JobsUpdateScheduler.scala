@@ -14,23 +14,24 @@
  * limitations under the License.
  */
 
-package uk.gov.hmrc.repositoryjobs.config
+package uk.gov.hmrc.repositoryjobs
 
 import javax.inject.{Inject, Singleton}
 
-import play.api.{Configuration, Play}
+import uk.gov.hmrc.repositoryjobs.config.RepositoryJobsConfig
+
+
+
+
 
 
 @Singleton
-class RepositoryJobsConfig @Inject()(configuration: Configuration) {
+class JobsUpdateScheduler @Inject()(repositoryJobsConfig: RepositoryJobsConfig, scheduler: Scheduler) {
 
+  import scala.concurrent.duration._
 
-  val schedulerEnabled = configuration.getBoolean("scheduler.enabled").getOrElse(false)
-
-  private val jobsApiUrlConfigKey = "jobs.api.url"
-  lazy val jobsApiBase: String = config(jobsApiUrlConfigKey).getOrElse(throw new RuntimeException(s"Error getting config value for $jobsApiUrlConfigKey."))
-
-  private def config(path: String) = configuration.getString(s"$path")
-
+  if (repositoryJobsConfig.schedulerEnabled) {
+    scheduler.startUpdatingJobsModel(10 minutes)
+  }
 
 }

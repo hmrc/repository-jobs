@@ -16,11 +16,13 @@
 
 package uk.gov.hmrc.repositoryjobs
 
+import javax.inject.{Inject, Singleton}
+
 import play.api.libs.json.Json
-import reactivemongo.api.DB
+import play.modules.reactivemongo.ReactiveMongoComponent
 import reactivemongo.bson.{BSONDocument, BSONObjectID}
 import uk.gov.hmrc.mongo.ReactiveRepository
-
+import reactivemongo.play.json.ImplicitBSONHandlers._
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
@@ -32,23 +34,25 @@ object Build {
 }
 
 
-trait BuildsRepository {
-  def add(build: Build): Future[Boolean]
-  def getForRepository(repositoryName: String): Future[Seq[Build]]
-  def getAllByRepo : Future[Map[String, Seq[Build]]]
-  def getAll: Future[Seq[Build]]
-}
+//trait BuildsRepository {
+//  def add(build: Build): Future[Boolean]
+//  def getForRepository(repositoryName: String): Future[Seq[Build]]
+//  def getAllByRepo : Future[Map[String, Seq[Build]]]
+//  def getAll: Future[Seq[Build]]
+//}
 
-class BuildsMongoRepository (mongo: () => DB)
+@Singleton
+class BuildsRepository @Inject()(mongo: ReactiveMongoComponent)
   extends ReactiveRepository[Build, BSONObjectID] (
     collectionName = "builds",
-    mongo = mongo,
-    domainFormat = Build.formats) with BuildsRepository {
+    mongo = mongo.mongoConnector.db,
+    domainFormat = Build.formats) {
 
   def add(build: Build): Future[Boolean] = {
     insert(build) map {
-      case lastError if lastError.inError => throw lastError
       case _ => true
+    } recover {
+      case lastError => throw new RuntimeException(s"failed to add BuildsRepository: $build", lastError)
     }
   }
 
@@ -66,5 +70,5 @@ class BuildsMongoRepository (mongo: () => DB)
     }
   }
 
-  def getAll = findAll()
+  def getAll: Future[Seq[Build]] = findAll()
 }

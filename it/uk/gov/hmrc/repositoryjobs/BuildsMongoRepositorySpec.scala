@@ -16,16 +16,29 @@
 
 package uk.gov.hmrc.repositoryjobs
 
+import org.mockito.Mockito
+import org.mockito.Mockito.when
 import org.scalatest.BeforeAndAfterEach
+import org.scalatest.mock.MockitoSugar
 import play.api.libs.json.Json
-import uk.gov.hmrc.mongo.MongoSpecSupport
+import play.modules.reactivemongo.ReactiveMongoComponent
+import uk.gov.hmrc.mongo.{MongoConnector, MongoSpecSupport}
 import uk.gov.hmrc.play.test.UnitSpec
+
 import scala.concurrent.ExecutionContext.Implicits.global
+//import reactivemongo.json._
+import reactivemongo.play.json.ImplicitBSONHandlers._
 
-import reactivemongo.json._
+class BuildsMongoRepositorySpec extends UnitSpec with MongoSpecSupport with BeforeAndAfterEach with MockitoSugar  {
+    val mockedConnector = mock[MongoConnector]
+    when(mockedConnector.db).thenReturn(mongo)
 
-class BuildsMongoRepositorySpec extends UnitSpec with MongoSpecSupport with BeforeAndAfterEach  {
-  val buildsRepository = new BuildsMongoRepository(mongo)
+  val reactiveMongoComponent = new ReactiveMongoComponent() {
+
+    override def mongoConnector = mockedConnector
+  }
+
+  val buildsRepository = new BuildsRepository(reactiveMongoComponent)
 
   override def beforeEach() {
     await(buildsRepository.drop)
