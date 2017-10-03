@@ -21,18 +21,20 @@ import org.scalatest.{Matchers, OptionValues, WordSpec}
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.time.{Millis, Span}
 import org.scalatestplus.play.OneAppPerSuite
-import uk.gov.hmrc.play.test.UnitSpec
 import cats.syntax.option._
+import org.scalatest.mock.MockitoSugar
+import uk.gov.hmrc.play.bootstrap.http.HttpClient
+import uk.gov.hmrc.repositoryjobs.config.RepositoryJobsConfig
 
-class JenkinsConnectorSpec extends WordSpec with Matchers with WireMockEndpoints with ScalaFutures with OneAppPerSuite with OptionValues {
+class JenkinsConnectorSpec extends WordSpec with Matchers with WireMockEndpoints with ScalaFutures with OneAppPerSuite with OptionValues with MockitoSugar {
   implicit val defaultPatienceConfig = new PatienceConfig(Span(200, Millis), Span(15, Millis))
 
   "Getting all jobs from jenkins" should {
 
     "Deserialise the response upon a successful request" in {
 
-      val connector = new JenkinsConnector {
-        override val http = WSHttp
+
+      val connector = new JenkinsConnector(app.injector.instanceOf[HttpClient], mock[RepositoryJobsConfig]) {
         override def jenkinsBaseUrl: String = endpointMockUrl
       }
 
@@ -65,8 +67,7 @@ class JenkinsConnectorSpec extends WordSpec with Matchers with WireMockEndpoints
 
     "handle control characters in the response body" in {
 
-      val connector = new JenkinsConnector {
-        override val http = WSHttp
+      val connector = new JenkinsConnector(app.injector.instanceOf[HttpClient], mock[RepositoryJobsConfig]) {
         override def jenkinsBaseUrl: String = endpointMockUrl
       }
 

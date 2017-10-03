@@ -70,5 +70,5 @@ class BuildsRepository @Inject()(mongo: ReactiveMongoComponent)
     }
   }
 
-  def getAll = findAll()
+  def getAll: Future[Seq[Build]] = findAll()
 }
