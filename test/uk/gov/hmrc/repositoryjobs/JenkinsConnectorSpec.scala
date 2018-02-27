@@ -34,7 +34,8 @@ class JenkinsConnectorSpec
     with OneAppPerSuite
     with OptionValues
     with MockitoSugar {
-  implicit val defaultPatienceConfig = new PatienceConfig(Span(200, Millis), Span(15, Millis))
+  implicit val defaultPatienceConfig =
+    new PatienceConfig(Span(200, Millis), Span(15, Millis))
 
   "Getting all jobs from jenkins" should {
 
@@ -55,8 +56,8 @@ class JenkinsConnectorSpec
       job.url                                        shouldBe "https://ci/job/address-lookup/".some
       job.scm.value.userRemoteConfigs.value.head.url shouldBe "git@github:HMRC/address-lookup.git".some
 
-      job.allBuilds.value.length shouldBe 1
-      job.allBuilds.value.head shouldBe BuildResponse(
+      job.allBuilds.length shouldBe 1
+      job.allBuilds.head shouldBe BuildResponse(
         "1ccc1869ee8fcd8ff28701b5804c880106b38771".some,
         218869.some,
         "2017-02-08_16-32-42".some,

@@ -17,14 +17,16 @@
 package uk.gov.hmrc.repositoryjobs
 
 import javax.inject.{Inject, Singleton}
-
+import play.api.Logger
 import play.api.libs.json.Json
 import play.modules.reactivemongo.ReactiveMongoComponent
+import reactivemongo.api.commands.MultiBulkWriteResult
 import reactivemongo.bson.{BSONDocument, BSONObjectID}
-import uk.gov.hmrc.mongo.ReactiveRepository
 import reactivemongo.play.json.ImplicitBSONHandlers._
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
+import scala.util.control.NonFatal
+import uk.gov.hmrc.mongo.ReactiveRepository
 
 case class Build(
   repositoryName: Option[String],
@@ -40,6 +42,7 @@ case class Build(
 object Build {
   implicit val formats = Json.format[Build]
 }
+
 @Singleton
 class BuildsRepository @Inject()(mongo: ReactiveMongoComponent)
     extends ReactiveRepository[Build, BSONObjectID](
@@ -47,11 +50,14 @@ class BuildsRepository @Inject()(mongo: ReactiveMongoComponent)
       mongo          = mongo.mongoConnector.db,
       domainFormat   = Build.formats) {
 
-  def add(build: Build): Future[Boolean] =
-    insert(build) map {
-      case _ => true
-    } recover {
-      case lastError => throw new RuntimeException(s"failed to add BuildsRepository: $build", lastError)
+  def bulkAdd(builds: Seq[Build]): Future[UpdateResult] =
+    bulkInsert(builds) map {
+      case MultiBulkWriteResult(_, n, _, _, writeErrors, _, _, _, _) =>
+        UpdateResult(n, writeErrors.size)
+    } recoverWith {
+      case NonFatal(ex) =>
+        Logger.error(s"An exception [$ex] occurred while performing a bulk insert of the following builds: [$builds]")
+        Future.failed(ex)
     }
 
   def getForRepository(repositoryName: String): Future[Seq[Build]] =

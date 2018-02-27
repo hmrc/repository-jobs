@@ -32,21 +32,18 @@
 
 package uk.gov.hmrc.repositoryjobs
 
-import java.util.concurrent.TimeUnit
-import javax.inject.{Inject, Singleton}
-
 import akka.actor.ActorSystem
 import com.kenshoo.play.metrics.Metrics
+import java.util.concurrent.TimeUnit
+import javax.inject.{Inject, Singleton}
 import org.joda.time.Duration
 import play.Logger
-import play.libs.Akka
-import play.modules.reactivemongo.{MongoDbConnection, ReactiveMongoComponent}
-import uk.gov.hmrc.lock.{LockKeeper, LockMongoRepository, LockRepository}
-
+import play.modules.reactivemongo.ReactiveMongoComponent
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 import scala.concurrent.duration.FiniteDuration
-import uk.gov.hmrc.http.HttpGet
+import scala.util.control.NonFatal
+import uk.gov.hmrc.lock.{LockKeeper, LockMongoRepository, LockRepository}
 
 sealed trait JobResult
 case class Error(message: String, ex: Throwable) extends JobResult {
@@ -68,7 +65,8 @@ class Scheduler @Inject()(
 
   override def lockId: String = "repository-jobs-scheduled-job"
 
-  override def repo: LockRepository = LockMongoRepository(reactiveMongoComponent.mongoConnector.db)
+  override def repo: LockRepository =
+    LockMongoRepository(reactiveMongoComponent.mongoConnector.db)
 
   override val forceLockReleaseAfter: Duration = Duration.standardMinutes(15)
 
@@ -76,28 +74,30 @@ class Scheduler @Inject()(
     Logger.info(s"Initialising mongo update every $interval")
 
     actorSystem.scheduler.schedule(FiniteDuration(1, TimeUnit.SECONDS), interval) {
-      updateRepositoryJobsModel
+      updateRepositoryJobsModel()
     }
   }
 
-  private def updateRepositoryJobsModel: Future[JobResult] =
+  private def updateRepositoryJobsModel(): Future[JobResult] =
     tryLock {
       Logger.info(s"Starting mongo update")
 
       repositoryJobsService.update
-        .map { result =>
-          val total        = result.toList.length
-          val failureCount = result.count(r => !r)
-          val successCount = total - failureCount
+        .map {
+          case UpdateResult(nSuccesses, nFailures) =>
+            metrics.defaultRegistry
+              .counter("scheduler.success")
+              .inc(nSuccesses)
+            metrics.defaultRegistry
+              .counter("scheduler.failure")
+              .inc(nFailures)
 
-          metrics.defaultRegistry.counter("scheduler.success").inc(successCount)
-          metrics.defaultRegistry.counter("scheduler.failure").inc(failureCount)
-
-          Info(s"Added $successCount and encountered $failureCount failures")
+            Info(s"Added $nSuccesses and encountered $nFailures failures")
         }
-        .recover {
-          case ex =>
+        .recoverWith {
+          case NonFatal(ex) =>
             Error(s"Something went wrong during the mongo update:", ex)
+            Future.failed(ex)
         }
     } map { resultOrLocked =>
       resultOrLocked getOrElse {

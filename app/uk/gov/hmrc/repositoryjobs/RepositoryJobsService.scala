@@ -17,12 +17,11 @@
 package uk.gov.hmrc.repositoryjobs
 
 import javax.inject.{Inject, Singleton}
-
 import play.Logger
-
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 import scala.util.Try
+import scala.util.control.NonFatal
 
 @Singleton
 class RepositoryJobsService @Inject()(repository: BuildsRepository, connector: JenkinsConnector) {
@@ -33,48 +32,62 @@ class RepositoryJobsService @Inject()(repository: BuildsRepository, connector: J
   def key(jobName: Option[String], timestamp: Option[Long]): String =
     key(jobName.getOrElse("no-job-name"), timestamp.getOrElse(0l))
 
-  def update: Future[Seq[Boolean]] =
+  def update: Future[UpdateResult] =
     (for {
-      buildsResponse    <- connector.getBuilds
-      existingBuilds    <- repository.getAll
-      jobsWithNewBuilds <- writeJobsWithNewBuilds(buildsResponse, existingBuilds)
-    } yield jobsWithNewBuilds) recover {
-      case ex =>
+      buildsResponse <- connector.getBuilds
+      existingBuilds <- repository.getAll
+      buildsToSave = getBuilds(buildsResponse.jobs, existingBuilds)
+      result <- repository.bulkAdd(buildsToSave)
+    } yield result) recoverWith {
+      case NonFatal(ex) =>
         Logger.error("unable to update repository jobs", ex)
-        throw ex
+        Future.failed(ex)
     }
 
-  def writeJobsWithNewBuilds(buildsResponse: JenkinsJobsResponse, existingBuilds: Seq[Build]): Future[Seq[Boolean]] = {
+  private[repositoryjobs] def getBuilds(jobs: Seq[Job], existingBuilds: Seq[Build]): Seq[Build] = {
 
     def buildAlreadyExists(job: Job, buildResponse: BuildResponse): Boolean =
-      existingBuilds.exists(existingBuild =>
-        key(existingBuild.jobName, existingBuild.timestamp) == key(job.name, buildResponse.timestamp))
+      existingBuilds.exists(
+        existingBuild =>
+          key(existingBuild.jobName, existingBuild.timestamp) ==
+            key(job.name, buildResponse.timestamp))
 
-    def collectJobsWithUnsavedBuilds() = buildsResponse.jobs.map { (job: Job) =>
-      job.copy(
-        allBuilds = job.allBuilds.map(
-          _.filterNot(buildResponse => buildAlreadyExists(job, buildResponse)).filter(_.result.isDefined)))
-    }
+    val jobsWithNewBuilds =
+      jobs.map { (job: Job) =>
+        job.copy(
+          allBuilds = job.allBuilds
+            .filterNot(buildAlreadyExists(job, _))
+            .filter(_.result.isDefined))
+      }
 
-    def getGitUrl(job: Job) = job.scm match {
-      case Some(scm) => scm.userRemoteConfigs.fold("")(_.head.url.getOrElse(""))
-      case None      => ""
-    }
-
-    Future.sequence {
-      val jobsWithUnsavedBuilds: Seq[Job] = collectJobsWithUnsavedBuilds()
-
-      jobsWithUnsavedBuilds.filter(_.allBuilds.nonEmpty).flatMap { job =>
-        val gitUrl = getGitUrl(job)
-
+    val builds =
+      jobsWithNewBuilds.flatMap { job =>
+        val gitUrl   = getGitUrl(job)
         val repoName = Try(gitUrl.split("/").last.stripSuffix(".git")).toOption
 
-        job.allBuilds.fold(Seq.empty[Future[Boolean]]) { (allBuilds: Seq[BuildResponse]) =>
-          allBuilds.map(b =>
-            repository.add(
-              Build(repoName, job.name, job.url, b.number, b.result, b.timestamp, b.duration, b.url, b.builtOn)))
+        job.allBuilds.map { buildResponse =>
+          Build(
+            repoName,
+            job.name,
+            job.url,
+            buildResponse.number,
+            buildResponse.result,
+            buildResponse.timestamp,
+            buildResponse.duration,
+            buildResponse.url,
+            buildResponse.builtOn
+          )
         }
       }
-    }
+
+    builds
   }
+
+  private def getGitUrl(job: Job) = job.scm match {
+    case Some(scm) => scm.userRemoteConfigs.fold("")(_.head.url.getOrElse(""))
+    case None      => ""
+  }
+
 }
+
+case class UpdateResult(nSuccesses: Int, nFailures: Int)

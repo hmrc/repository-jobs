@@ -40,7 +40,7 @@ case class BuildResponse(
 
 case class UserRemoteConfig(url: Option[String])
 case class Scm(userRemoteConfigs: Option[Seq[UserRemoteConfig]])
-case class Job(name: Option[String], url: Option[String], allBuilds: Option[Seq[BuildResponse]], scm: Option[Scm])
+case class Job(name: Option[String], url: Option[String], allBuilds: Seq[BuildResponse], scm: Option[Scm])
 case class JenkinsJobsResponse(jobs: Seq[Job])
 
 @Singleton
@@ -70,11 +70,15 @@ class JenkinsConnector @Inject()(http: HttpClient, repositoryJobsConfig: Reposit
           Logger.error(s"An error occurred when connecting to $url: ${ex.getMessage}", ex)
           throw ex
       }
-      .map(httpResponse =>
-        Try(Json.parse(httpResponse.body.replaceAll("\\p{Cntrl}", "")).validate[JenkinsJobsResponse]) match {
-          case Success(jsResult) => jsResult
-          case Failure(t)        => JsError(t.getMessage)
-      })
+      .map(
+        httpResponse =>
+          Try(
+            Json
+              .parse(httpResponse.body.replaceAll("\\p{Cntrl}", ""))
+              .validate[JenkinsJobsResponse]) match {
+            case Success(jsResult) => jsResult
+            case Failure(t)        => JsError(t.getMessage)
+        })
 
     result.map {
       case JsSuccess(jenkinsResponse, _) =>

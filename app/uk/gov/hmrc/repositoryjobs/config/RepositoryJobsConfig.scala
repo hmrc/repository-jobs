@@ -17,12 +17,13 @@
 package uk.gov.hmrc.repositoryjobs.config
 
 import javax.inject.{Inject, Singleton}
+import play.api.Configuration
 
-import play.api.{Configuration, Play}
 @Singleton
 class RepositoryJobsConfig @Inject()(configuration: Configuration) {
 
-  val schedulerEnabled = configuration.getBoolean("scheduler.enabled").getOrElse(false)
+  val schedulerEnabled =
+    configuration.getBoolean("scheduler.enabled").getOrElse(false)
 
   private val jobsApiUrlConfigKey = "jobs.api.url"
   lazy val jobsApiBase: String = config(jobsApiUrlConfigKey).getOrElse(
