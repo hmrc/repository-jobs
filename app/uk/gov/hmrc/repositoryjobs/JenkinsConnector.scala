@@ -17,16 +17,15 @@
 package uk.gov.hmrc.repositoryjobs
 
 import javax.inject.{Inject, Singleton}
-
 import play.api.Logger
 import play.api.libs.json.{JsError, JsSuccess, Json}
-import uk.gov.hmrc.http.{HeaderCarrier, HttpGet, HttpResponse}
+import scala.concurrent.Future
+import scala.util.control.NonFatal
+import scala.util.{Failure, Success, Try}
+import uk.gov.hmrc.http.{HeaderCarrier, HttpResponse}
 import uk.gov.hmrc.play.bootstrap.http.HttpClient
 import uk.gov.hmrc.play.http.logging.MdcLoggingExecutionContext.fromLoggingDetails
 import uk.gov.hmrc.repositoryjobs.config.RepositoryJobsConfig
-
-import scala.concurrent.Future
-import scala.util.{Failure, Success, Try}
 
 case class BuildResponse(
   description: Option[String],
@@ -65,10 +64,10 @@ class JenkinsConnector @Inject()(http: HttpClient, repositoryJobsConfig: Reposit
 
     val result = http
       .GET[HttpResponse](url)
-      .recover {
-        case ex =>
+      .recoverWith {
+        case NonFatal(ex) =>
           Logger.error(s"An error occurred when connecting to $url: ${ex.getMessage}", ex)
-          throw ex
+          Future.failed(ex)
       }
       .map(
         httpResponse =>
