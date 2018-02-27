@@ -28,8 +28,15 @@ import uk.gov.hmrc.repositoryjobs.config.RepositoryJobsConfig
 import scala.concurrent.Future
 import scala.util.{Failure, Success, Try}
 
-case class BuildResponse(description: Option[String], duration: Option[Int], id: Option[String], number: Option[Int], result: Option[String],
-                         timestamp: Option[Long], url: Option[String], builtOn: Option[String])
+case class BuildResponse(
+  description: Option[String],
+  duration: Option[Int],
+  id: Option[String],
+  number: Option[Int],
+  result: Option[String],
+  timestamp: Option[Long],
+  url: Option[String],
+  builtOn: Option[String])
 
 case class UserRemoteConfig(url: Option[String])
 case class Scm(userRemoteConfigs: Option[Seq[UserRemoteConfig]])
@@ -37,32 +44,37 @@ case class Job(name: Option[String], url: Option[String], allBuilds: Option[Seq[
 case class JenkinsJobsResponse(jobs: Seq[Job])
 
 @Singleton
-class JenkinsConnector @Inject()(http: HttpClient, repositoryJobsConfig: RepositoryJobsConfig){
-
+class JenkinsConnector @Inject()(http: HttpClient, repositoryJobsConfig: RepositoryJobsConfig) {
 
   def jenkinsBaseUrl: String = repositoryJobsConfig.jobsApiBase
 
-  implicit val buildReads = Json.format[BuildResponse]
+  implicit val buildReads            = Json.format[BuildResponse]
   implicit val userRemoteConfigReads = Json.format[UserRemoteConfig]
-  implicit val scmReads = Json.format[Scm]
-  implicit val jobReads = Json.format[Job]
-  implicit val jenkinsReads = Json.format[JenkinsJobsResponse]
+  implicit val scmReads              = Json.format[Scm]
+  implicit val jobReads              = Json.format[Job]
+  implicit val jenkinsReads          = Json.format[JenkinsJobsResponse]
 
-  val buildsUrl = "/api/json?tree=" + java.net.URLEncoder.encode("jobs[name,url,allBuilds[id,description,duration,number,result,timestamp,url,builtOn],scm[userRemoteConfigs[url]]]", "UTF-8")
+  val buildsUrl = "/api/json?tree=" + java.net.URLEncoder.encode(
+    "jobs[name,url,allBuilds[id,description,duration,number,result,timestamp,url,builtOn],scm[userRemoteConfigs[url]]]",
+    "UTF-8")
 
   def getBuilds: Future[JenkinsJobsResponse] = {
     implicit val hc = new HeaderCarrier()
 
     val url = jenkinsBaseUrl + buildsUrl
 
-    val result = http.GET[HttpResponse](url).recover {
-      case ex =>
-        Logger.error(s"An error occurred when connecting to $url: ${ex.getMessage}", ex)
-        throw ex
-    }.map(httpResponse => Try(Json.parse(httpResponse.body.replaceAll("\\p{Cntrl}", "")).validate[JenkinsJobsResponse]) match {
-      case Success(jsResult) => jsResult
-      case Failure(t) => JsError(t.getMessage)
-    })
+    val result = http
+      .GET[HttpResponse](url)
+      .recover {
+        case ex =>
+          Logger.error(s"An error occurred when connecting to $url: ${ex.getMessage}", ex)
+          throw ex
+      }
+      .map(httpResponse =>
+        Try(Json.parse(httpResponse.body.replaceAll("\\p{Cntrl}", "")).validate[JenkinsJobsResponse]) match {
+          case Success(jsResult) => jsResult
+          case Failure(t)        => JsError(t.getMessage)
+      })
 
     result.map {
       case JsSuccess(jenkinsResponse, _) =>
@@ -71,7 +83,5 @@ class JenkinsConnector @Inject()(http: HttpClient, repositoryJobsConfig: Reposit
         throw new RuntimeException(s"${e.toString()}")
     }
   }
-
-
 
 }

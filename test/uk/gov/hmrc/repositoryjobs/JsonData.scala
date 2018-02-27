@@ -48,7 +48,6 @@ object JsonData {
         |}
      """.stripMargin
 
-
   private val controlCharacters = ((1.toChar to 31.toChar).toList :+ 127.toChar).mkString
 
   val jenkinsJobsResponseWithControlCharacters =

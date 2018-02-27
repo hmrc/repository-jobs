@@ -27,9 +27,9 @@ import uk.gov.hmrc.play.test.UnitSpec
 import scala.concurrent.ExecutionContext.Implicits.global
 import reactivemongo.play.json.ImplicitBSONHandlers._
 
-class BuildsMongoRepositorySpec extends UnitSpec with MongoSpecSupport with BeforeAndAfterEach with MockitoSugar  {
-    val mockedConnector = mock[MongoConnector]
-    when(mockedConnector.db).thenReturn(mongo)
+class BuildsMongoRepositorySpec extends UnitSpec with MongoSpecSupport with BeforeAndAfterEach with MockitoSugar {
+  val mockedConnector = mock[MongoConnector]
+  when(mockedConnector.db).thenReturn(mongo)
 
   val reactiveMongoComponent = new ReactiveMongoComponent() {
 
@@ -46,42 +46,44 @@ class BuildsMongoRepositorySpec extends UnitSpec with MongoSpecSupport with Befo
 
     "return all the builds for the given repository" in {
 
-      await(buildsRepository.collection.insert(Json.obj(
-        "repositoryName" -> "cato-acceptance-tests",
-        "jobName" -> "cato-acceptance-tests",
-        "jobUrl" -> "http://ci/job/cato-acceptance-tests/",
-        "buildNumber" -> 123,
-        "result" -> "SUCCESS",
-        "timestamp" -> 1.486571562E12,
-        "duration" -> 218869,
-        "buildUrl" -> "https://ci/job/cato-acceptance-tests/123/",
-        "builtOn" -> "ci-slave-9"
-      )))
+      await(
+        buildsRepository.collection.insert(Json.obj(
+          "repositoryName" -> "cato-acceptance-tests",
+          "jobName"        -> "cato-acceptance-tests",
+          "jobUrl"         -> "http://ci/job/cato-acceptance-tests/",
+          "buildNumber"    -> 123,
+          "result"         -> "SUCCESS",
+          "timestamp"      -> 1.486571562E12,
+          "duration"       -> 218869,
+          "buildUrl"       -> "https://ci/job/cato-acceptance-tests/123/",
+          "builtOn"        -> "ci-slave-9"
+        )))
 
-      await(buildsRepository.collection.insert(Json.obj(
-        "repositoryName" -> "iht-acceptance-tests",
-        "jobName" -> "iht-acceptance-tests",
-        "jobUrl" -> "https://ci/job/iht/",
-        "buildNumber" -> 234,
-        "result" -> "SUCCESS",
-        "timestamp" -> 1.486571562E12,
-        "duration" -> 218869,
-        "buildUrl" -> "https://ci/job/iht/234/",
-        "builtOn" -> "ci-slave-9"
-      )))
+      await(
+        buildsRepository.collection.insert(Json.obj(
+          "repositoryName" -> "iht-acceptance-tests",
+          "jobName"        -> "iht-acceptance-tests",
+          "jobUrl"         -> "https://ci/job/iht/",
+          "buildNumber"    -> 234,
+          "result"         -> "SUCCESS",
+          "timestamp"      -> 1.486571562E12,
+          "duration"       -> 218869,
+          "buildUrl"       -> "https://ci/job/iht/234/",
+          "builtOn"        -> "ci-slave-9"
+        )))
 
       val builds: Seq[Build] = await(buildsRepository.getForRepository("cato-acceptance-tests"))
 
-      builds.size shouldBe 1
+      builds.size                    shouldBe 1
       builds.head.repositoryName.get shouldBe "cato-acceptance-tests"
-      builds.head.jobName.get shouldBe "cato-acceptance-tests"
-      builds.head.jobUrl.get shouldBe "http://ci/job/cato-acceptance-tests/"
-      builds.head.buildNumber.get shouldBe 123
-      builds.head.result.get shouldBe "SUCCESS"
-      builds.head.timestamp.get shouldBe 1.486571562E12
-      builds.head.duration.get shouldBe 218869
-      builds.head.buildUrl.get shouldBe "https://ci/job/cato-acceptance-tests/123/"
-      builds.head.builtOn.get shouldBe "ci-slave-9"
+      builds.head.jobName.get        shouldBe "cato-acceptance-tests"
+      builds.head.jobUrl.get         shouldBe "http://ci/job/cato-acceptance-tests/"
+      builds.head.buildNumber.get    shouldBe 123
+      builds.head.result.get         shouldBe "SUCCESS"
+      builds.head.timestamp.get      shouldBe 1.486571562E12
+      builds.head.duration.get       shouldBe 218869
+      builds.head.buildUrl.get       shouldBe "https://ci/job/cato-acceptance-tests/123/"
+      builds.head.builtOn.get        shouldBe "ci-slave-9"
 
     }
   }
@@ -90,55 +92,57 @@ class BuildsMongoRepositorySpec extends UnitSpec with MongoSpecSupport with Befo
 
     "return a map of repos to builds" in {
 
-      await(buildsRepository.collection.insert(Json.obj(
-        "repositoryName" -> "cato-acceptance-tests",
-        "jobName" -> "cato-acceptance-tests",
-        "jobUrl" -> "http://ci/job/cato-acceptance-tests/",
-        "buildNumber" -> 123,
-        "result" -> "SUCCESS",
-        "timestamp" -> 1.486571562E12,
-        "duration" -> 218869,
-        "buildUrl" -> "https://ci/job/cato-acceptance-tests/123/",
-        "builtOn" -> "ci-slave-9"
-      )))
+      await(
+        buildsRepository.collection.insert(Json.obj(
+          "repositoryName" -> "cato-acceptance-tests",
+          "jobName"        -> "cato-acceptance-tests",
+          "jobUrl"         -> "http://ci/job/cato-acceptance-tests/",
+          "buildNumber"    -> 123,
+          "result"         -> "SUCCESS",
+          "timestamp"      -> 1.486571562E12,
+          "duration"       -> 218869,
+          "buildUrl"       -> "https://ci/job/cato-acceptance-tests/123/",
+          "builtOn"        -> "ci-slave-9"
+        )))
 
-      await(buildsRepository.collection.insert(Json.obj(
-        "repositoryName" -> "iht-acceptance-tests",
-        "jobName" -> "iht-acceptance-tests",
-        "jobUrl" -> "https://ci/job/iht/",
-        "buildNumber" -> 234,
-        "result" -> "SUCCESS",
-        "timestamp" -> 1.486571562E12,
-        "duration" -> 218869,
-        "buildUrl" -> "https://ci/job/iht/234/",
-        "builtOn" -> "ci-slave-9"
-      )))
+      await(
+        buildsRepository.collection.insert(Json.obj(
+          "repositoryName" -> "iht-acceptance-tests",
+          "jobName"        -> "iht-acceptance-tests",
+          "jobUrl"         -> "https://ci/job/iht/",
+          "buildNumber"    -> 234,
+          "result"         -> "SUCCESS",
+          "timestamp"      -> 1.486571562E12,
+          "duration"       -> 218869,
+          "buildUrl"       -> "https://ci/job/iht/234/",
+          "builtOn"        -> "ci-slave-9"
+        )))
 
       val builds = await(buildsRepository.getAllByRepo)
 
       val catoBuilds = builds("cato-acceptance-tests")
-      catoBuilds.size shouldBe 1
+      catoBuilds.size                    shouldBe 1
       catoBuilds.head.repositoryName.get shouldBe "cato-acceptance-tests"
-      catoBuilds.head.jobName.get shouldBe "cato-acceptance-tests"
-      catoBuilds.head.jobUrl.get shouldBe "http://ci/job/cato-acceptance-tests/"
-      catoBuilds.head.buildNumber.get shouldBe 123
-      catoBuilds.head.result.get shouldBe "SUCCESS"
-      catoBuilds.head.timestamp.get shouldBe 1.486571562E12
-      catoBuilds.head.duration.get shouldBe 218869
-      catoBuilds.head.buildUrl.get shouldBe "https://ci/job/cato-acceptance-tests/123/"
-      catoBuilds.head.builtOn.get shouldBe "ci-slave-9"
+      catoBuilds.head.jobName.get        shouldBe "cato-acceptance-tests"
+      catoBuilds.head.jobUrl.get         shouldBe "http://ci/job/cato-acceptance-tests/"
+      catoBuilds.head.buildNumber.get    shouldBe 123
+      catoBuilds.head.result.get         shouldBe "SUCCESS"
+      catoBuilds.head.timestamp.get      shouldBe 1.486571562E12
+      catoBuilds.head.duration.get       shouldBe 218869
+      catoBuilds.head.buildUrl.get       shouldBe "https://ci/job/cato-acceptance-tests/123/"
+      catoBuilds.head.builtOn.get        shouldBe "ci-slave-9"
 
       val ihtBuilds = builds("iht-acceptance-tests")
-      ihtBuilds.size shouldBe 1
+      ihtBuilds.size                    shouldBe 1
       ihtBuilds.head.repositoryName.get shouldBe "iht-acceptance-tests"
-      ihtBuilds.head.jobName.get shouldBe "iht-acceptance-tests"
-      ihtBuilds.head.jobUrl.get shouldBe "https://ci/job/iht/"
-      ihtBuilds.head.buildNumber.get shouldBe 234
-      ihtBuilds.head.result.get shouldBe "SUCCESS"
-      ihtBuilds.head.timestamp.get shouldBe 1.486571562E12
-      ihtBuilds.head.duration.get shouldBe 218869
-      ihtBuilds.head.buildUrl.get shouldBe "https://ci/job/iht/234/"
-      ihtBuilds.head.builtOn.get shouldBe "ci-slave-9"
+      ihtBuilds.head.jobName.get        shouldBe "iht-acceptance-tests"
+      ihtBuilds.head.jobUrl.get         shouldBe "https://ci/job/iht/"
+      ihtBuilds.head.buildNumber.get    shouldBe 234
+      ihtBuilds.head.result.get         shouldBe "SUCCESS"
+      ihtBuilds.head.timestamp.get      shouldBe 1.486571562E12
+      ihtBuilds.head.duration.get       shouldBe 218869
+      ihtBuilds.head.buildUrl.get       shouldBe "https://ci/job/iht/234/"
+      ihtBuilds.head.builtOn.get        shouldBe "ci-slave-9"
     }
 
   }

@@ -21,8 +21,7 @@ import uk.gov.hmrc.repositoryjobs.JobsUpdateScheduler
 
 class RepositoryJobsModule extends AbstractModule {
 
-  override def configure(): Unit = {
+  override def configure(): Unit =
     bind(classOf[JobsUpdateScheduler]).asEagerSingleton()
-  }
 
 }

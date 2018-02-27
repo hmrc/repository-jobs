@@ -32,8 +32,26 @@ class RepositoryJobsControllerSpec extends UnitSpec with MockitoSugar with OneAp
 
     "return a json formatted response containing info about the builds for that repository" in {
 
-      val build1 = Build("repo-name".some, "repository-abcd".some, "job.url".some, 1.some, "result-xyz".some, 1l.some, 20.some, "build.url".some, "built-on".some)
-      val build2 = Build("repo-name".some, "repository-abcd".some, "job.url".some, 5.some, "result-xyz".some, 2l.some, 30.some, "build.url".some, "built-on".some)
+      val build1 = Build(
+        "repo-name".some,
+        "repository-abcd".some,
+        "job.url".some,
+        1.some,
+        "result-xyz".some,
+        1l.some,
+        20.some,
+        "build.url".some,
+        "built-on".some)
+      val build2 = Build(
+        "repo-name".some,
+        "repository-abcd".some,
+        "job.url".some,
+        5.some,
+        "result-xyz".some,
+        2l.some,
+        30.some,
+        "build.url".some,
+        "built-on".some)
 
       val mockBuildRepository: BuildsRepository = mock[BuildsRepository]
       when(mockBuildRepository.getForRepository(any())).thenReturn(Seq(build1, build2))
@@ -62,12 +80,9 @@ class RepositoryJobsControllerSpec extends UnitSpec with MockitoSugar with OneAp
       contentAsString(response) shouldBe "No build found for 'non-existing-repository'"
     }
 
-    
   }
 
-  def controllerWithData(buildsRepository: BuildsRepository): RepositoryJobsController = {
+  def controllerWithData(buildsRepository: BuildsRepository): RepositoryJobsController =
     new RepositoryJobsController(buildsRepository)
-  }
-
 
 }

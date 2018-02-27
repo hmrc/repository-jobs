@@ -26,30 +26,33 @@ import org.scalatest.mock.MockitoSugar
 import uk.gov.hmrc.play.bootstrap.http.HttpClient
 import uk.gov.hmrc.repositoryjobs.config.RepositoryJobsConfig
 
-class JenkinsConnectorSpec extends WordSpec with Matchers with WireMockEndpoints with ScalaFutures with OneAppPerSuite with OptionValues with MockitoSugar {
+class JenkinsConnectorSpec
+    extends WordSpec
+    with Matchers
+    with WireMockEndpoints
+    with ScalaFutures
+    with OneAppPerSuite
+    with OptionValues
+    with MockitoSugar {
   implicit val defaultPatienceConfig = new PatienceConfig(Span(200, Millis), Span(15, Millis))
 
   "Getting all jobs from jenkins" should {
 
     "Deserialise the response upon a successful request" in {
 
-
       val connector = new JenkinsConnector(app.injector.instanceOf[HttpClient], mock[RepositoryJobsConfig]) {
         override def jenkinsBaseUrl: String = endpointMockUrl
       }
 
-      serviceEndpoint(
-        GET,
-        connector.buildsUrl,
-        willRespondWith = (200, Some(JsonData.jenkinsJobsResponse)))
+      serviceEndpoint(GET, connector.buildsUrl, willRespondWith = (200, Some(JsonData.jenkinsJobsResponse)))
 
       val result = connector.getBuilds
 
       result.futureValue.jobs.length shouldBe 1
 
       val job = result.futureValue.jobs.head
-      job.name shouldBe "address-lookup".some
-      job.url shouldBe "https://ci/job/address-lookup/".some
+      job.name                                       shouldBe "address-lookup".some
+      job.url                                        shouldBe "https://ci/job/address-lookup/".some
       job.scm.value.userRemoteConfigs.value.head.url shouldBe "git@github:HMRC/address-lookup.git".some
 
       job.allBuilds.value.length shouldBe 1
@@ -61,7 +64,8 @@ class JenkinsConnectorSpec extends WordSpec with Matchers with WireMockEndpoints
         "SUCCESS".some,
         1486571562000L.some,
         "https://ci/job/address-lookup/126/".some,
-        "ci-slave-9".some)
+        "ci-slave-9".some
+      )
 
     }
 

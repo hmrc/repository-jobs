@@ -24,19 +24,17 @@ import uk.gov.hmrc.play.bootstrap.controller.BaseController
 import uk.gov.hmrc.play.http.logging.MdcLoggingExecutionContext._
 
 import scala.concurrent.Future
-
-
 @Singleton
-class RepositoryJobsController @Inject() (buildRepository: BuildsRepository) extends BaseController {
+class RepositoryJobsController @Inject()(buildRepository: BuildsRepository) extends BaseController {
 
-	def builds(repositoryName: String) = Action.async { implicit request =>
-		buildRepository.getForRepository(repositoryName).map {
-			case Nil => NotFound(s"No build found for '$repositoryName'")
-			case builds => Ok(Json.toJson(builds))
-		}
-	}
-	
-	def hello() = Action.async { implicit request =>
-			Future.successful(Ok("Hello world"))
-	}
+  def builds(repositoryName: String) = Action.async { implicit request =>
+    buildRepository.getForRepository(repositoryName).map {
+      case Nil    => NotFound(s"No build found for '$repositoryName'")
+      case builds => Ok(Json.toJson(builds))
+    }
+  }
+
+  def hello() = Action.async { implicit request =>
+    Future.successful(Ok("Hello world"))
+  }
 }

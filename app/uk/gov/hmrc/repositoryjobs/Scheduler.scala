@@ -49,7 +49,7 @@ import scala.concurrent.duration.FiniteDuration
 import uk.gov.hmrc.http.HttpGet
 
 sealed trait JobResult
-case class Error(message: String, ex : Throwable) extends JobResult {
+case class Error(message: String, ex: Throwable) extends JobResult {
   Logger.error(message, ex)
 }
 case class Warn(message: String) extends JobResult {
@@ -58,13 +58,13 @@ case class Warn(message: String) extends JobResult {
 case class Info(message: String) extends JobResult {
   Logger.info(message)
 }
-
-
 @Singleton
-class Scheduler @Inject()(repositoryJobsService: RepositoryJobsService,
-                          reactiveMongoComponent: ReactiveMongoComponent,
-                          metrics: Metrics,
-                          actorSystem: ActorSystem) extends LockKeeper  {
+class Scheduler @Inject()(
+  repositoryJobsService: RepositoryJobsService,
+  reactiveMongoComponent: ReactiveMongoComponent,
+  metrics: Metrics,
+  actorSystem: ActorSystem)
+    extends LockKeeper {
 
   override def lockId: String = "repository-jobs-scheduled-job"
 
@@ -80,29 +80,29 @@ class Scheduler @Inject()(repositoryJobsService: RepositoryJobsService,
     }
   }
 
-
-  private def updateRepositoryJobsModel: Future[JobResult] = {
+  private def updateRepositoryJobsModel: Future[JobResult] =
     tryLock {
       Logger.info(s"Starting mongo update")
 
-      repositoryJobsService.update.map { result =>
-        val total = result.toList.length
-        val failureCount = result.count(r => !r)
-        val successCount = total - failureCount
+      repositoryJobsService.update
+        .map { result =>
+          val total        = result.toList.length
+          val failureCount = result.count(r => !r)
+          val successCount = total - failureCount
 
-        metrics.defaultRegistry.counter("scheduler.success").inc(successCount)
-        metrics.defaultRegistry.counter("scheduler.failure").inc(failureCount)
+          metrics.defaultRegistry.counter("scheduler.success").inc(successCount)
+          metrics.defaultRegistry.counter("scheduler.failure").inc(failureCount)
 
-        Info(s"Added $successCount and encountered $failureCount failures")
-      }.recover { case ex =>
-        Error(s"Something went wrong during the mongo update:", ex)
-      }
+          Info(s"Added $successCount and encountered $failureCount failures")
+        }
+        .recover {
+          case ex =>
+            Error(s"Something went wrong during the mongo update:", ex)
+        }
     } map { resultOrLocked =>
       resultOrLocked getOrElse {
         Warn("Failed to obtain lock. Another process may have it.")
       }
     }
-  }
 
 }
-

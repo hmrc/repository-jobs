@@ -26,42 +26,44 @@ import reactivemongo.play.json.ImplicitBSONHandlers._
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
-case class Build(repositoryName: Option[String], jobName: Option[String], jobUrl: Option[String], buildNumber: Option[Int], result: Option[String],
-                 timestamp: Option[Long], duration: Option[Int], buildUrl: Option[String], builtOn: Option[String])
+case class Build(
+  repositoryName: Option[String],
+  jobName: Option[String],
+  jobUrl: Option[String],
+  buildNumber: Option[Int],
+  result: Option[String],
+  timestamp: Option[Long],
+  duration: Option[Int],
+  buildUrl: Option[String],
+  builtOn: Option[String])
 
 object Build {
   implicit val formats = Json.format[Build]
 }
-
-
 @Singleton
 class BuildsRepository @Inject()(mongo: ReactiveMongoComponent)
-  extends ReactiveRepository[Build, BSONObjectID] (
-    collectionName = "builds",
-    mongo = mongo.mongoConnector.db,
-    domainFormat = Build.formats) {
+    extends ReactiveRepository[Build, BSONObjectID](
+      collectionName = "builds",
+      mongo          = mongo.mongoConnector.db,
+      domainFormat   = Build.formats) {
 
-  def add(build: Build): Future[Boolean] = {
+  def add(build: Build): Future[Boolean] =
     insert(build) map {
       case _ => true
     } recover {
       case lastError => throw new RuntimeException(s"failed to add BuildsRepository: $build", lastError)
     }
-  }
 
-  def getForRepository(repositoryName: String): Future[Seq[Build]] = {
+  def getForRepository(repositoryName: String): Future[Seq[Build]] =
     find("repositoryName" -> BSONDocument("$eq" -> repositoryName)) map {
-      case Nil => Seq()
+      case Nil  => Seq()
       case data => data
     }
-  }
 
-  def getAllByRepo : Future[Map[String, Seq[Build]]] =
-  {
+  def getAllByRepo: Future[Map[String, Seq[Build]]] =
     findAll() map { data =>
       data.groupBy(_.repositoryName.getOrElse("no-repo-name"))
     }
-  }
 
   def getAll: Future[Seq[Build]] = findAll()
 }
