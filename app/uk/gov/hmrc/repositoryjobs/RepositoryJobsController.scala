@@ -17,15 +17,15 @@
 package uk.gov.hmrc.repositoryjobs
 
 import javax.inject.{Inject, Singleton}
-
 import play.api.libs.json.Json
 import play.api.mvc._
+import scala.concurrent.Future
 import uk.gov.hmrc.play.bootstrap.controller.BaseController
 import uk.gov.hmrc.play.http.logging.MdcLoggingExecutionContext._
 
-import scala.concurrent.Future
 @Singleton
-class RepositoryJobsController @Inject()(buildRepository: BuildsRepository) extends BaseController {
+class RepositoryJobsController @Inject()(buildRepository: BuildsRepository, service: RepositoryJobsService)
+    extends BaseController {
 
   def builds(repositoryName: String) = Action.async { implicit request =>
     buildRepository.getForRepository(repositoryName).map {
@@ -37,4 +37,14 @@ class RepositoryJobsController @Inject()(buildRepository: BuildsRepository) exte
   def hello() = Action.async { implicit request =>
     Future.successful(Ok("Hello world"))
   }
+
+  def reload = Action.async { implicit request =>
+    service.update.map { updateResult =>
+      val result = Json.toJson(updateResult)
+
+      if (updateResult.nFailures == 0) Ok(result)
+      else InternalServerError(result)
+    }
+  }
+
 }

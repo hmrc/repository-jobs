@@ -18,6 +18,7 @@ package uk.gov.hmrc.repositoryjobs
 
 import javax.inject.{Inject, Singleton}
 import play.Logger
+import play.api.libs.json.{Json, OFormat}
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 import scala.util.Try
@@ -32,17 +33,23 @@ class RepositoryJobsService @Inject()(repository: BuildsRepository, connector: J
   def key(jobName: Option[String], timestamp: Option[Long]): String =
     key(jobName.getOrElse("no-job-name"), timestamp.getOrElse(0l))
 
-  def update: Future[UpdateResult] =
+  def update: Future[UpdateResult] = {
+    Logger.info("Starting repository jobs update")
     (for {
       buildsResponse <- connector.getBuilds
       existingBuilds <- repository.getAll
       buildsToSave = getBuilds(buildsResponse.jobs, existingBuilds)
       result <- repository.bulkAdd(buildsToSave)
-    } yield result) recoverWith {
+    } yield result)
+      .map { updateResult =>
+        Logger.info(s"Completed repository jobs update: $updateResult")
+        updateResult
+      } recoverWith {
       case NonFatal(ex) =>
-        Logger.error("unable to update repository jobs", ex)
+        Logger.error("Unable to update repository jobs", ex)
         Future.failed(ex)
     }
+  }
 
   private[repositoryjobs] def getBuilds(jobs: Seq[Job], existingBuilds: Seq[Build]): Seq[Build] = {
 
@@ -91,3 +98,7 @@ class RepositoryJobsService @Inject()(repository: BuildsRepository, connector: J
 }
 
 case class UpdateResult(nSuccesses: Int, nFailures: Int)
+
+object UpdateResult {
+  implicit val format: OFormat[UpdateResult] = Json.format[UpdateResult]
+}

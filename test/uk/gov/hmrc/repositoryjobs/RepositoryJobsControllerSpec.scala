@@ -25,10 +25,14 @@ import play.api.test.FakeRequest
 import play.api.test.Helpers._
 import uk.gov.hmrc.play.test.UnitSpec
 import cats.syntax.option._
+import play.api.libs.json.Json
 
 class RepositoryJobsControllerSpec extends UnitSpec with MockitoSugar with OneAppPerSuite {
 
   "get repository builds" should {
+
+    def controllerWithBuildsRepository(buildsRepository: BuildsRepository) =
+      new RepositoryJobsController(buildsRepository, mock[RepositoryJobsService])
 
     "return a json formatted response containing info about the builds for that repository" in {
 
@@ -56,7 +60,7 @@ class RepositoryJobsControllerSpec extends UnitSpec with MockitoSugar with OneAp
       val mockBuildRepository: BuildsRepository = mock[BuildsRepository]
       when(mockBuildRepository.getForRepository(any())).thenReturn(Seq(build1, build2))
 
-      val controller = controllerWithData(mockBuildRepository)
+      val controller = controllerWithBuildsRepository(mockBuildRepository)
 
       val builds = contentAsJson(controller.builds("repository-abcd").apply(FakeRequest())).as[Seq[Build]]
 
@@ -71,7 +75,7 @@ class RepositoryJobsControllerSpec extends UnitSpec with MockitoSugar with OneAp
       val mockBuildRepository: BuildsRepository = mock[BuildsRepository]
       when(mockBuildRepository.getForRepository(any())).thenReturn(Nil)
 
-      val controller = controllerWithData(mockBuildRepository)
+      val controller = controllerWithBuildsRepository(mockBuildRepository)
 
       val response = controller.builds("non-existing-repository").apply(FakeRequest())
 
@@ -82,7 +86,37 @@ class RepositoryJobsControllerSpec extends UnitSpec with MockitoSugar with OneAp
 
   }
 
-  def controllerWithData(buildsRepository: BuildsRepository): RepositoryJobsController =
-    new RepositoryJobsController(buildsRepository)
+  "reload repository jobs cache" should {
+    def controllerWithRepositoryJobService(repositoryJobsService: RepositoryJobsService) =
+      new RepositoryJobsController(mock[BuildsRepository], repositoryJobsService)
 
+    "return 200 OK if all updates are successful" in {
+      val mockRepositoryJobService = mock[RepositoryJobsService]
+      val expectedResult           = UpdateResult(nSuccesses = 1, nFailures = 0)
+
+      when(mockRepositoryJobService.update).thenReturn(expectedResult)
+      val controller = controllerWithRepositoryJobService(mockRepositoryJobService)
+
+      val response = controller.reload().apply(FakeRequest())
+
+      status(response) shouldBe OK
+
+      contentAsJson(response) shouldBe Json.toJson(expectedResult)
+    }
+
+    "return 500 Internal Server Error" in {
+      val mockRepositoryJobService = mock[RepositoryJobsService]
+      val expectedResult           = UpdateResult(nSuccesses = 1, nFailures = 1)
+
+      when(mockRepositoryJobService.update).thenReturn(expectedResult)
+      val controller = controllerWithRepositoryJobService(mockRepositoryJobService)
+
+      val response = controller.reload().apply(FakeRequest())
+
+      status(response) shouldBe INTERNAL_SERVER_ERROR
+
+      contentAsJson(response) shouldBe Json.toJson(expectedResult)
+    }
+
+  }
 }

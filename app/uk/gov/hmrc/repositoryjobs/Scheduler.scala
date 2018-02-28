@@ -45,16 +45,6 @@ import scala.concurrent.duration.FiniteDuration
 import scala.util.control.NonFatal
 import uk.gov.hmrc.lock.{LockKeeper, LockMongoRepository, LockRepository}
 
-sealed trait JobResult
-case class Error(message: String, ex: Throwable) extends JobResult {
-  Logger.error(message, ex)
-}
-case class Warn(message: String) extends JobResult {
-  Logger.warn(message)
-}
-case class Info(message: String) extends JobResult {
-  Logger.info(message)
-}
 @Singleton
 class Scheduler @Inject()(
   repositoryJobsService: RepositoryJobsService,
@@ -78,31 +68,25 @@ class Scheduler @Inject()(
     }
   }
 
-  private def updateRepositoryJobsModel(): Future[JobResult] =
+  private def updateRepositoryJobsModel(): Future[Unit] =
     tryLock {
-      Logger.info(s"Starting mongo update")
-
-      repositoryJobsService.update
-        .map {
-          case UpdateResult(nSuccesses, nFailures) =>
-            metrics.defaultRegistry
-              .counter("scheduler.success")
-              .inc(nSuccesses)
-            metrics.defaultRegistry
-              .counter("scheduler.failure")
-              .inc(nFailures)
-
-            Info(s"Added $nSuccesses and encountered $nFailures failures")
-        }
-        .recoverWith {
-          case NonFatal(ex) =>
-            Error(s"Something went wrong during the mongo update:", ex)
-            Future.failed(ex)
-        }
+      repositoryJobsService.update.map(scheduledUpdateMetrics)
     } map { resultOrLocked =>
       resultOrLocked getOrElse {
-        Warn("Failed to obtain lock. Another process may have it.")
+        Logger.warn("Failed to obtain lock. Another process may have it.")
       }
+    }
+
+  private def scheduledUpdateMetrics(updateResult: UpdateResult): Unit =
+    try {
+      metrics.defaultRegistry
+        .counter("scheduler.success")
+        .inc(updateResult.nSuccesses)
+      metrics.defaultRegistry
+        .counter("scheduler.failure")
+        .inc(updateResult.nFailures)
+    } catch {
+      case NonFatal(ex) => Logger.error("Scheduler metrics couldn't be updated", ex)
     }
 
 }

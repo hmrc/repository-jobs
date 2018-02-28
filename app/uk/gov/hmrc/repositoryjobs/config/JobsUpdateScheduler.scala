@@ -19,8 +19,7 @@ package uk.gov.hmrc.repositoryjobs
 import javax.inject.{Inject, Singleton}
 import uk.gov.hmrc.repositoryjobs.config.RepositoryJobsConfig
 @Singleton
-class JobsUpdateScheduler @Inject()(repositoryJobsConfig: RepositoryJobsConfig,
-                                    scheduler: Scheduler) {
+class JobsUpdateScheduler @Inject()(repositoryJobsConfig: RepositoryJobsConfig, scheduler: Scheduler) {
 
   import scala.concurrent.duration._
 

@@ -4,5 +4,6 @@
 
 GET        /api/builds/hello-world       uk.gov.hmrc.repositoryjobs.RepositoryJobsController.hello
 GET        /api/builds/:repositoryName   uk.gov.hmrc.repositoryjobs.RepositoryJobsController.builds(repositoryName)
+GET        /api/cache/reload             uk.gov.hmrc.repositoryjobs.RepositoryJobsController.reload
 
 GET        /admin/metrics                @com.kenshoo.play.metrics.MetricsController.metrics
