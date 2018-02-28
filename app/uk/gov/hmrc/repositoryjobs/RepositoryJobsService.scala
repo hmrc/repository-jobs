@@ -37,8 +37,14 @@ class RepositoryJobsService @Inject()(repository: BuildsRepository, connector: J
     Logger.info("Starting repository jobs update")
     (for {
       buildsResponse <- connector.getBuilds
+      _ = Logger.info(s"fetched builds from jenkins. Number of jobs: ${buildsResponse.jobs.map(_.allBuilds.size).sum}")
+
       existingBuilds <- repository.getAll
+      _ = Logger.info(s"fetched existing repositories from mongo.  Number of existing builds: ${existingBuilds.size}")
+
       buildsToSave = getBuilds(buildsResponse.jobs, existingBuilds)
+      _            = Logger.info(s"calculated new builds to be saved.  Number of new builds: $buildsToSave")
+
       result <- repository.bulkAdd(buildsToSave)
     } yield result)
       .map { updateResult =>

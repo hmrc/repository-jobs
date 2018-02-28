@@ -58,7 +58,7 @@ class Scheduler @Inject()(
   override def repo: LockRepository =
     LockMongoRepository(reactiveMongoComponent.mongoConnector.db)
 
-  override val forceLockReleaseAfter: Duration = Duration.standardMinutes(5)
+  override val forceLockReleaseAfter: Duration = Duration.standardMinutes(30)
 
   def startUpdatingJobsModel(interval: FiniteDuration): Unit = {
     Logger.info(s"Initialising mongo update every $interval")
