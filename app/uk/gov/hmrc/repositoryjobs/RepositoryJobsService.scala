@@ -37,7 +37,8 @@ class RepositoryJobsService @Inject()(repository: BuildsRepository, connector: J
     Logger.info("Starting repository jobs update")
     (for {
       buildsResponse <- connector.getBuilds
-      _ = Logger.info(s"fetched builds from jenkins. Number of jobs: ${buildsResponse.jobs.map(_.allBuilds.size).sum}")
+      _ = Logger.info(
+        s"fetched builds from jenkins. Number of builds: ${buildsResponse.jobs.map(_.allBuilds.size).sum}")
 
       existingBuilds <- repository.getAll
       _ = Logger.info(s"fetched existing repositories from mongo.  Number of existing builds: ${existingBuilds.size}")
@@ -59,11 +60,10 @@ class RepositoryJobsService @Inject()(repository: BuildsRepository, connector: J
 
   private[repositoryjobs] def getBuilds(jobs: Seq[Job], existingBuilds: Seq[Build]): Seq[Build] = {
 
+    val setExistingBuilds = existingBuilds.map(b => (b.jobName, b.timestamp)).toSet
+
     def buildAlreadyExists(job: Job, buildResponse: BuildResponse): Boolean =
-      existingBuilds.exists(
-        existingBuild =>
-          key(existingBuild.jobName, existingBuild.timestamp) ==
-            key(job.name, buildResponse.timestamp))
+      setExistingBuilds.contains((job.name, buildResponse.timestamp))
 
     val jobsWithNewBuilds =
       jobs.map { (job: Job) =>
