@@ -38,13 +38,13 @@ class RepositoryJobsService @Inject()(repository: BuildsRepository, connector: J
     (for {
       buildsResponse <- connector.getBuilds
       _ = Logger.info(
-        s"fetched builds from jenkins. Number of builds: ${buildsResponse.jobs.map(_.allBuilds.size).sum}")
+        s"Fetched builds from jenkins. Number of builds: ${buildsResponse.jobs.map(_.allBuilds.size).sum}")
 
       existingBuilds <- repository.getAll
-      _ = Logger.info(s"fetched existing repositories from mongo.  Number of existing builds: ${existingBuilds.size}")
+      _ = Logger.info(s"Fetched existing repositories from mongo.  Number of existing builds: ${existingBuilds.size}")
 
       buildsToSave = getBuilds(buildsResponse.jobs, existingBuilds)
-      _            = Logger.info(s"calculated new builds to be saved.  Number of new builds: $buildsToSave")
+      _            = Logger.info(s"Calculated new builds to be saved.  Number of new builds: ${buildsToSave.size}")
 
       result <- repository.bulkAdd(buildsToSave)
     } yield result)
@@ -59,7 +59,6 @@ class RepositoryJobsService @Inject()(repository: BuildsRepository, connector: J
   }
 
   private[repositoryjobs] def getBuilds(jobs: Seq[Job], existingBuilds: Seq[Build]): Seq[Build] = {
-
     val setExistingBuilds = existingBuilds.map(b => (b.jobName, b.timestamp)).toSet
 
     def buildAlreadyExists(job: Job, buildResponse: BuildResponse): Boolean =

@@ -18,14 +18,16 @@ package uk.gov.hmrc.repositoryjobs
 
 import cats.syntax.option._
 import org.mockito.Mockito
+import org.scalacheck.{Arbitrary, Gen}
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.mock.MockitoSugar
+import org.scalatest.prop.PropertyChecks
 import org.scalatest.{BeforeAndAfterEach, GivenWhenThen, Matchers, WordSpec}
 import play.modules.reactivemongo.ReactiveMongoComponent
+import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 import scala.concurrent.duration._
 import uk.gov.hmrc.mongo.{MongoConnector, MongoSpecSupport}
-import scala.concurrent.ExecutionContext.Implicits.global
 
 class RepositoryJobsServiceSpec
     extends WordSpec
@@ -34,9 +36,24 @@ class RepositoryJobsServiceSpec
     with MockitoSugar
     with MongoSpecSupport
     with BeforeAndAfterEach
-    with GivenWhenThen {
+    with GivenWhenThen
+    with PropertyChecks {
 
   "Repository jobs service" should {
+    "An empty list is returned when there are no new builds" in {
+      forAll(genJobsWithNoNewBuilds) {
+        case (jobs, builds) =>
+          repositoryJobsService.getBuilds(jobs, builds).size shouldBe 0
+      }
+    }
+
+    "A list of only the new builds is returned when new builds exist" in {
+      forAll(genJobsWithNewBuilds) {
+        case (jobs, existingBuilds, numberOfNewBuilds) =>
+          repositoryJobsService.getBuilds(jobs, existingBuilds).size shouldBe numberOfNewBuilds
+      }
+    }
+
     "Pick only new valid builds to save" in {
       val repoName = "repoName"
       val serviceGitConfig =
@@ -222,4 +239,61 @@ class RepositoryJobsServiceSpec
   val connector: JenkinsConnector = mock[JenkinsConnector]
 
   val repositoryJobsService = new RepositoryJobsService(repository, connector)
+
+  case class BuildId(jobName: String, timestamp: Long)
+
+  val genUniqueBuildIds: Gen[Set[BuildId]] =
+    Gen
+      .listOf(for {
+        jobName   <- Gen.alphaStr
+        timestamp <- Arbitrary.arbLong.arbitrary
+      } yield BuildId(jobName, timestamp))
+      .map(_.toSet)
+
+  def createBuildResponse(buildId: BuildId): BuildResponse =
+    BuildResponse(
+      description = None,
+      duration    = None,
+      id          = None,
+      number      = None,
+      result      = Some("success"),
+      timestamp   = Some(buildId.timestamp),
+      url         = None,
+      builtOn     = None)
+
+  def createJobs(buildIds: Set[BuildId]): Seq[Job] =
+    buildIds
+      .groupBy(_.jobName)
+      .map {
+        case (jobName, buildIdsForJob) =>
+          Job(Some(jobName), None, buildIdsForJob.map(createBuildResponse).toSeq, None)
+      }
+      .toSeq
+
+  def createBuilds(buildIds: Set[BuildId]): Seq[Build] =
+    buildIds.map {
+      case BuildId(jobName, timestamp) =>
+        Build(
+          repositoryName = None,
+          jobName        = Some(jobName),
+          jobUrl         = None,
+          buildNumber    = None,
+          result         = None,
+          timestamp      = Some(timestamp),
+          duration       = None,
+          buildUrl       = None,
+          builtOn        = None)
+    }.toSeq
+
+  val genJobsWithNoNewBuilds: Gen[(Seq[Job], Seq[Build])] =
+    genUniqueBuildIds.map(jobIds => (createJobs(jobIds), createBuilds(jobIds)))
+
+  val genJobsWithNewBuilds: Gen[(Seq[Job], Seq[Build], Int)] =
+    for {
+      (jobs, existingBuilds) <- genJobsWithNoNewBuilds
+      numberOfNewBuilds      <- Gen.choose(0, existingBuilds.size)
+
+      existingBuildsAfterDropping = existingBuilds.drop(numberOfNewBuilds)
+    } yield (jobs, existingBuildsAfterDropping, numberOfNewBuilds)
+
 }
