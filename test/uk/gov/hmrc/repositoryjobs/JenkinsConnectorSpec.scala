@@ -41,8 +41,8 @@ class JenkinsConnectorSpec
 
     "Deserialise the response upon a successful request" in {
 
-      val connector = new JenkinsConnector(app.injector.instanceOf[HttpClient], mock[RepositoryJobsConfig]) {
-        override def jenkinsBaseUrl: String = endpointMockUrl
+      val connector = new JenkinsCiDevConnector(app.injector.instanceOf[HttpClient], mock[RepositoryJobsConfig]) {
+        override val host: String = endpointMockUrl
       }
 
       serviceEndpoint(GET, connector.buildsUrl, willRespondWith = (200, Some(JsonData.jenkinsJobsResponse)))
@@ -72,8 +72,8 @@ class JenkinsConnectorSpec
 
     "handle control characters in the response body" in {
 
-      val connector = new JenkinsConnector(app.injector.instanceOf[HttpClient], mock[RepositoryJobsConfig]) {
-        override def jenkinsBaseUrl: String = endpointMockUrl
+      val connector = new JenkinsCiDevConnector(app.injector.instanceOf[HttpClient], mock[RepositoryJobsConfig]) {
+        override val host: String = endpointMockUrl
       }
 
       serviceEndpoint(

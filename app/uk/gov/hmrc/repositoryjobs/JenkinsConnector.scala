@@ -17,15 +17,17 @@
 package uk.gov.hmrc.repositoryjobs
 
 import javax.inject.{Inject, Singleton}
+
 import play.api.Logger
 import play.api.libs.json.{JsError, JsSuccess, Json}
-import scala.concurrent.Future
-import scala.util.control.NonFatal
-import scala.util.{Failure, Success, Try}
 import uk.gov.hmrc.http.{HeaderCarrier, HttpResponse}
 import uk.gov.hmrc.play.bootstrap.http.HttpClient
 import uk.gov.hmrc.play.http.logging.MdcLoggingExecutionContext.fromLoggingDetails
 import uk.gov.hmrc.repositoryjobs.config.RepositoryJobsConfig
+
+import scala.concurrent.Future
+import scala.util.control.NonFatal
+import scala.util.{Failure, Success, Try}
 
 case class BuildResponse(
   description: Option[String],
@@ -42,10 +44,10 @@ case class Scm(userRemoteConfigs: Option[Seq[UserRemoteConfig]])
 case class Job(name: Option[String], url: Option[String], allBuilds: Seq[BuildResponse], scm: Option[Scm])
 case class JenkinsJobsResponse(jobs: Seq[Job])
 
-@Singleton
-class JenkinsConnector @Inject()(http: HttpClient, repositoryJobsConfig: RepositoryJobsConfig) {
+trait JenkinsConnector {
 
-  def jenkinsBaseUrl: String = repositoryJobsConfig.jobsApiBase
+  val host: String
+  val http: HttpClient
 
   implicit val buildReads            = Json.format[BuildResponse]
   implicit val userRemoteConfigReads = Json.format[UserRemoteConfig]
@@ -60,7 +62,7 @@ class JenkinsConnector @Inject()(http: HttpClient, repositoryJobsConfig: Reposit
   def getBuilds: Future[JenkinsJobsResponse] = {
     implicit val hc = new HeaderCarrier()
 
-    val url = jenkinsBaseUrl + buildsUrl
+    val url = host + buildsUrl
 
     val result = http
       .GET[HttpResponse](url)
@@ -77,7 +79,7 @@ class JenkinsConnector @Inject()(http: HttpClient, repositoryJobsConfig: Reposit
               .validate[JenkinsJobsResponse]) match {
             case Success(jsResult) => jsResult
             case Failure(t)        => JsError(t.getMessage)
-        })
+          })
 
     result.map {
       case JsSuccess(jenkinsResponse, _) =>
@@ -86,5 +88,16 @@ class JenkinsConnector @Inject()(http: HttpClient, repositoryJobsConfig: Reposit
         throw new RuntimeException(s"${e.toString()}")
     }
   }
+}
 
+@Singleton
+class JenkinsCiDevConnector @Inject()(httpClient: HttpClient, repositoryJobsConfig: RepositoryJobsConfig) extends JenkinsConnector {
+  override val host: String = repositoryJobsConfig.ciDevUrl
+  override val http: HttpClient = httpClient
+}
+
+@Singleton
+class JenkinsCiOpenConnector @Inject()(httpClient: HttpClient, repositoryJobsConfig: RepositoryJobsConfig) extends JenkinsConnector {
+  override val host: String = repositoryJobsConfig.ciOpenUrl
+  override val http: HttpClient = httpClient
 }

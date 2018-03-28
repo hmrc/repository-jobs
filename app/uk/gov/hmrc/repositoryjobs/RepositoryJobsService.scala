@@ -17,15 +17,22 @@
 package uk.gov.hmrc.repositoryjobs
 
 import javax.inject.{Inject, Singleton}
+
 import play.Logger
 import play.api.libs.json.{Json, OFormat}
+import uk.gov.hmrc.repositoryjobs.config.RepositoryJobsConfig
+
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 import scala.util.Try
 import scala.util.control.NonFatal
 
 @Singleton
-class RepositoryJobsService @Inject()(repository: BuildsRepository, connector: JenkinsConnector) {
+class RepositoryJobsService @Inject()(
+                                       repository: BuildsRepository,
+                                       jenkinsDevConnector: JenkinsCiDevConnector,
+                                       jenkinsOpenConnector: JenkinsCiOpenConnector,
+                                       repositoryJobsConfig: RepositoryJobsConfig) {
 
   def key(jobName: String, timestamp: Long): String =
     s"${jobName}_$timestamp"
@@ -36,17 +43,24 @@ class RepositoryJobsService @Inject()(repository: BuildsRepository, connector: J
   def update: Future[UpdateResult] = {
     Logger.info("Starting repository jobs update")
     (for {
-      buildsResponse <- connector.getBuilds
+      devBuildsResponse <- jenkinsDevConnector.getBuilds
       _ = Logger.info(
-        s"Fetched builds from jenkins. Number of builds: ${buildsResponse.jobs.map(_.allBuilds.size).sum}")
+        s"Fetched builds from jenkins ci-dev. Number of builds: ${devBuildsResponse.jobs.map(_.allBuilds.size).sum}")
+
+      openBuildsResponse <- jenkinsOpenConnector.getBuilds
+      _ = Logger.info(
+        s"Fetched builds from jenkins ci-open. Number of builds: ${openBuildsResponse.jobs.map(_.allBuilds.size).sum}")
 
       existingBuilds <- repository.getAll
       _ = Logger.info(s"Fetched existing repositories from mongo.  Number of existing builds: ${existingBuilds.size}")
 
-      buildsToSave = getBuilds(buildsResponse.jobs, existingBuilds)
-      _            = Logger.info(s"Calculated new builds to be saved.  Number of new builds: ${buildsToSave.size}")
+      newBuildsFromDev = getBuilds(devBuildsResponse.jobs, existingBuilds)
+      _ = Logger.info(s"Calculated new builds to be saved from jenkins ci-dev. Number of new builds: ${newBuildsFromDev.size}")
 
-      result <- repository.bulkAdd(buildsToSave)
+      newBuildsFromOpen = getBuilds(openBuildsResponse.jobs, existingBuilds)
+      _ = Logger.info(s"Calculated new builds to be saved from jenkins ci-open. Number of new builds: ${newBuildsFromOpen.size}")
+
+      result <- repository.bulkAdd(newBuildsFromDev ++ newBuildsFromOpen)
     } yield result)
       .map { updateResult =>
         Logger.info(s"Completed repository jobs update: $updateResult")

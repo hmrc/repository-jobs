@@ -25,9 +25,11 @@ class RepositoryJobsConfig @Inject()(configuration: Configuration) {
   val schedulerEnabled =
     configuration.getBoolean("scheduler.enabled").getOrElse(false)
 
-  private val jobsApiUrlConfigKey = "jobs.api.url"
-  lazy val jobsApiBase: String = config(jobsApiUrlConfigKey).getOrElse(
-    throw new RuntimeException(s"Error getting config value for $jobsApiUrlConfigKey."))
+  def ciDevUrl: String = config("jobs.api.url.ci-dev").getOrElse(
+    throw new RuntimeException("Error getting config value jobs.api.url.ci-dev"))
+
+  def ciOpenUrl: String = config("jobs.api.url.ci-open").getOrElse(
+    throw new RuntimeException("Error getting config value jobs.api.url.ci-open"))
 
   private def config(path: String) = configuration.getString(s"$path")
 
