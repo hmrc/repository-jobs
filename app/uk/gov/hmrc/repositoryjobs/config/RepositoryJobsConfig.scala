@@ -25,11 +25,13 @@ class RepositoryJobsConfig @Inject()(configuration: Configuration) {
   val schedulerEnabled =
     configuration.getBoolean("scheduler.enabled").getOrElse(false)
 
-  def ciDevUrl: String = config("jobs.api.url.ci-dev").getOrElse(
-    throw new RuntimeException("Error getting config value jobs.api.url.ci-dev"))
+  def ciDevUrl: String =
+    config("jobs.api.url.ci-dev").getOrElse(
+      throw new RuntimeException("Error getting config value jobs.api.url.ci-dev"))
 
-  def ciOpenUrl: String = config("jobs.api.url.ci-open").getOrElse(
-    throw new RuntimeException("Error getting config value jobs.api.url.ci-open"))
+  def ciOpenUrl: String =
+    config("jobs.api.url.ci-open").getOrElse(
+      throw new RuntimeException("Error getting config value jobs.api.url.ci-open"))
 
   private def config(path: String) = configuration.getString(s"$path")
 

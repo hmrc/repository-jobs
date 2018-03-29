@@ -79,7 +79,7 @@ trait JenkinsConnector {
               .validate[JenkinsJobsResponse]) match {
             case Success(jsResult) => jsResult
             case Failure(t)        => JsError(t.getMessage)
-          })
+        })
 
     result.map {
       case JsSuccess(jenkinsResponse, _) =>
@@ -91,13 +91,15 @@ trait JenkinsConnector {
 }
 
 @Singleton
-class JenkinsCiDevConnector @Inject()(httpClient: HttpClient, repositoryJobsConfig: RepositoryJobsConfig) extends JenkinsConnector {
-  override val host: String = repositoryJobsConfig.ciDevUrl
+class JenkinsCiDevConnector @Inject()(httpClient: HttpClient, repositoryJobsConfig: RepositoryJobsConfig)
+    extends JenkinsConnector {
+  override val host: String     = repositoryJobsConfig.ciDevUrl
   override val http: HttpClient = httpClient
 }
 
 @Singleton
-class JenkinsCiOpenConnector @Inject()(httpClient: HttpClient, repositoryJobsConfig: RepositoryJobsConfig) extends JenkinsConnector {
-  override val host: String = repositoryJobsConfig.ciOpenUrl
+class JenkinsCiOpenConnector @Inject()(httpClient: HttpClient, repositoryJobsConfig: RepositoryJobsConfig)
+    extends JenkinsConnector {
+  override val host: String     = repositoryJobsConfig.ciOpenUrl
   override val http: HttpClient = httpClient
 }

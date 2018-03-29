@@ -29,10 +29,10 @@ import scala.util.control.NonFatal
 
 @Singleton
 class RepositoryJobsService @Inject()(
-                                       repository: BuildsRepository,
-                                       jenkinsDevConnector: JenkinsCiDevConnector,
-                                       jenkinsOpenConnector: JenkinsCiOpenConnector,
-                                       repositoryJobsConfig: RepositoryJobsConfig) {
+  repository: BuildsRepository,
+  jenkinsDevConnector: JenkinsCiDevConnector,
+  jenkinsOpenConnector: JenkinsCiOpenConnector,
+  repositoryJobsConfig: RepositoryJobsConfig) {
 
   def key(jobName: String, timestamp: Long): String =
     s"${jobName}_$timestamp"
@@ -55,10 +55,12 @@ class RepositoryJobsService @Inject()(
       _ = Logger.info(s"Fetched existing repositories from mongo.  Number of existing builds: ${existingBuilds.size}")
 
       newBuildsFromDev = getBuilds(devBuildsResponse.jobs, existingBuilds)
-      _ = Logger.info(s"Calculated new builds to be saved from jenkins ci-dev. Number of new builds: ${newBuildsFromDev.size}")
+      _ = Logger.info(
+        s"Calculated new builds to be saved from jenkins ci-dev. Number of new builds: ${newBuildsFromDev.size}")
 
       newBuildsFromOpen = getBuilds(openBuildsResponse.jobs, existingBuilds)
-      _ = Logger.info(s"Calculated new builds to be saved from jenkins ci-open. Number of new builds: ${newBuildsFromOpen.size}")
+      _ = Logger.info(
+        s"Calculated new builds to be saved from jenkins ci-open. Number of new builds: ${newBuildsFromOpen.size}")
 
       result <- repository.bulkAdd(newBuildsFromDev ++ newBuildsFromOpen)
     } yield result)

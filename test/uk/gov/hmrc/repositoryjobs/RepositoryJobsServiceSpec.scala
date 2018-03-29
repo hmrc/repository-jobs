@@ -68,9 +68,7 @@ class RepositoryJobsServiceSpec
 
         Mockito
           .when(connectorCiOpen.getBuilds)
-          .thenReturn(
-            Future.successful(
-              JenkinsJobsResponse(List.empty)))
+          .thenReturn(Future.successful(JenkinsJobsResponse(List.empty)))
 
         And("mongo contains the existing builds")
         repository.bulkAdd(List(existingBuild)).futureValue
@@ -92,9 +90,7 @@ class RepositoryJobsServiceSpec
 
         Mockito
           .when(connectorCiDev.getBuilds)
-          .thenReturn(
-            Future.successful(
-              JenkinsJobsResponse(List.empty)))
+          .thenReturn(Future.successful(JenkinsJobsResponse(List.empty)))
 
         And("mongo contains the existing builds")
         repository.bulkAdd(List(existingBuild)).futureValue
@@ -163,7 +159,6 @@ class RepositoryJobsServiceSpec
           ))))
   }
 
-
   override implicit val patienceConfig: PatienceConfig =
     PatienceConfig(timeout = 5.seconds)
 
@@ -171,9 +166,9 @@ class RepositoryJobsServiceSpec
     override def mongoConnector: MongoConnector = mongoConnectorForTest
   })
 
-  val connectorCiDev: JenkinsCiDevConnector = mock[JenkinsCiDevConnector]
+  val connectorCiDev: JenkinsCiDevConnector   = mock[JenkinsCiDevConnector]
   val connectorCiOpen: JenkinsCiOpenConnector = mock[JenkinsCiOpenConnector]
-  val config: RepositoryJobsConfig = mock[RepositoryJobsConfig]
+  val config: RepositoryJobsConfig            = mock[RepositoryJobsConfig]
 
   val repositoryJobsService = new RepositoryJobsService(repository, connectorCiDev, connectorCiOpen, config)
 
