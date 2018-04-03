@@ -16,13 +16,13 @@
 
 package uk.gov.hmrc.repositoryjobs
 
-import com.github.tomakehurst.wiremock.http.RequestMethod._
-import org.scalatest.{Matchers, OptionValues, WordSpec}
-import org.scalatest.concurrent.ScalaFutures
-import org.scalatest.time.{Millis, Span}
-import org.scalatestplus.play.OneAppPerSuite
 import cats.syntax.option._
+import com.github.tomakehurst.wiremock.http.RequestMethod._
+import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.mock.MockitoSugar
+import org.scalatest.time.{Millis, Span}
+import org.scalatest.{Matchers, OptionValues, WordSpec}
+import org.scalatestplus.play.OneAppPerSuite
 import uk.gov.hmrc.play.bootstrap.http.HttpClient
 import uk.gov.hmrc.repositoryjobs.config.RepositoryJobsConfig
 
