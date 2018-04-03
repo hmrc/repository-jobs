@@ -16,16 +16,16 @@
 
 package uk.gov.hmrc.repositoryjobs
 
+import cats.syntax.option._
 import org.mockito.Matchers._
 import org.mockito.Mockito
 import org.mockito.Mockito.when
 import org.scalatest.mock.MockitoSugar
 import org.scalatestplus.play.OneAppPerSuite
+import play.api.libs.json.Json
 import play.api.test.FakeRequest
 import play.api.test.Helpers._
 import uk.gov.hmrc.play.test.UnitSpec
-import cats.syntax.option._
-import play.api.libs.json.Json
 
 class RepositoryJobsControllerSpec extends UnitSpec with MockitoSugar with OneAppPerSuite {
 

@@ -16,13 +16,13 @@
 
 package uk.gov.hmrc.repositoryjobs
 
-import com.github.tomakehurst.wiremock.http.RequestMethod._
-import org.scalatest.{Matchers, OptionValues, WordSpec}
-import org.scalatest.concurrent.ScalaFutures
-import org.scalatest.time.{Millis, Span}
-import org.scalatestplus.play.OneAppPerSuite
 import cats.syntax.option._
+import com.github.tomakehurst.wiremock.http.RequestMethod._
+import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.mock.MockitoSugar
+import org.scalatest.time.{Millis, Span}
+import org.scalatest.{Matchers, OptionValues, WordSpec}
+import org.scalatestplus.play.OneAppPerSuite
 import uk.gov.hmrc.play.bootstrap.http.HttpClient
 import uk.gov.hmrc.repositoryjobs.config.RepositoryJobsConfig
 
@@ -41,8 +41,8 @@ class JenkinsConnectorSpec
 
     "Deserialise the response upon a successful request" in {
 
-      val connector = new JenkinsConnector(app.injector.instanceOf[HttpClient], mock[RepositoryJobsConfig]) {
-        override def jenkinsBaseUrl: String = endpointMockUrl
+      val connector = new JenkinsCiDevConnector(app.injector.instanceOf[HttpClient], mock[RepositoryJobsConfig]) {
+        override val host: String = endpointMockUrl
       }
 
       serviceEndpoint(GET, connector.buildsUrl, willRespondWith = (200, Some(JsonData.jenkinsJobsResponse)))
@@ -72,8 +72,8 @@ class JenkinsConnectorSpec
 
     "handle control characters in the response body" in {
 
-      val connector = new JenkinsConnector(app.injector.instanceOf[HttpClient], mock[RepositoryJobsConfig]) {
-        override def jenkinsBaseUrl: String = endpointMockUrl
+      val connector = new JenkinsCiDevConnector(app.injector.instanceOf[HttpClient], mock[RepositoryJobsConfig]) {
+        override val host: String = endpointMockUrl
       }
 
       serviceEndpoint(
