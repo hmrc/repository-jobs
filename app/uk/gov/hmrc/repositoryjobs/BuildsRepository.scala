@@ -21,6 +21,8 @@ import play.api.Logger
 import play.api.libs.json.Json
 import play.modules.reactivemongo.ReactiveMongoComponent
 import reactivemongo.api.commands.MultiBulkWriteResult
+import reactivemongo.api.indexes.Index
+import reactivemongo.api.indexes.IndexType.Descending
 import reactivemongo.bson.{BSONDocument, BSONObjectID}
 import reactivemongo.play.json.ImplicitBSONHandlers._
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -49,6 +51,11 @@ class BuildsRepository @Inject()(mongo: ReactiveMongoComponent)
       collectionName = "builds",
       mongo          = mongo.mongoConnector.db,
       domainFormat   = Build.formats) {
+
+  override def indexes: Seq[Index] = Seq(
+    Index(key = Seq("repositoryName" -> Descending), background = true),
+    Index(key = Seq("jobName"        -> Descending, "timestamp" -> Descending), background = true)
+  )
 
   def bulkAdd(builds: Seq[Build]): Future[UpdateResult] =
     bulkInsert(builds) map {

@@ -34,12 +34,6 @@ class RepositoryJobsService @Inject()(
   jenkinsOpenConnector: JenkinsCiOpenConnector,
   repositoryJobsConfig: RepositoryJobsConfig) {
 
-  def key(jobName: String, timestamp: Long): String =
-    s"${jobName}_$timestamp"
-
-  def key(jobName: Option[String], timestamp: Option[Long]): String =
-    key(jobName.getOrElse("no-job-name"), timestamp.getOrElse(0l))
-
   def update: Future[UpdateResult] = {
     val devBuildsResponseF: Future[JenkinsJobsResponse]  = jenkinsDevConnector.getBuilds
     val openBuildsResponseF: Future[JenkinsJobsResponse] = jenkinsOpenConnector.getBuilds
