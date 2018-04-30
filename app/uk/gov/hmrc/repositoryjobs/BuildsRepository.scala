@@ -18,17 +18,24 @@ package uk.gov.hmrc.repositoryjobs
 
 import javax.inject.{Inject, Singleton}
 import play.api.Logger
-import play.api.libs.json.Json
+import play.api.libs.functional.syntax._
+import play.api.libs.json.Json.toJson
+import play.api.libs.json.Reads._
+import play.api.libs.json._
 import play.modules.reactivemongo.ReactiveMongoComponent
-import reactivemongo.api.commands.MultiBulkWriteResult
+import reactivemongo.api.FailoverStrategy
+import reactivemongo.api.ReadPreference.primaryPreferred
+import reactivemongo.api.commands.{Command, MultiBulkWriteResult}
 import reactivemongo.api.indexes.Index
 import reactivemongo.api.indexes.IndexType.Descending
-import reactivemongo.bson.{BSONDocument, BSONObjectID}
+import reactivemongo.bson.{BSONDocument, BSONElement, BSONObjectID}
 import reactivemongo.play.json.ImplicitBSONHandlers._
+import reactivemongo.play.json.{BSONFormats, ImplicitBSONHandlers, JSONSerializationPack}
+import uk.gov.hmrc.mongo.ReactiveRepository
+
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 import scala.util.control.NonFatal
-import uk.gov.hmrc.mongo.ReactiveRepository
 
 case class Build(
   repositoryName: Option[String],
@@ -42,7 +49,7 @@ case class Build(
   builtOn: Option[String])
 
 object Build {
-  implicit val formats = Json.format[Build]
+  implicit val formats: OFormat[Build] = Json.format[Build]
 }
 
 @Singleton
@@ -56,6 +63,45 @@ class BuildsRepository @Inject()(mongo: ReactiveMongoComponent)
     Index(key = Seq("repositoryName" -> Descending), background = true),
     Index(key = Seq("jobName"        -> Descending, "timestamp" -> Descending), background = true)
   )
+
+  def persist(builds: Seq[Build]): Future[UpdateResult] = {
+    import ImplicitBSONHandlers._
+
+    val commandDoc = Json.obj(
+      "update" -> collection.name,
+      "updates" -> builds.map { build =>
+        Json.obj(
+          "q"      -> Json.obj("jobName" -> build.jobName, "timestamp" -> build.timestamp),
+          "u"      -> toJson(build),
+          "upsert" -> true,
+          "multi"  -> false)
+      }
+    )
+    val runner = Command.run(JSONSerializationPack, FailoverStrategy.default)
+
+    runner(mongo.mongoConnector.db(), runner.rawCommand(commandDoc))
+      .one[BSONDocument](primaryPreferred)
+      .map(bsonToJson)
+      .map(_.as[UpdateResult])
+  }
+
+  private val bsonToJson: BSONDocument => JsValue =
+    bson =>
+      JsObject(bson.elements.map {
+        case BSONElement(name, value) => name -> BSONFormats.toJSON(value)
+      })
+
+  private implicit val updateResultReads: Reads[UpdateResult] = (
+    (__ \ "n").read[Int] and
+      (__ \ "nModified").read[Int] and
+      (__ \ "upserted").read[Seq[JsValue]].map(_.size)
+  ).tupled.map {
+    case (recordsTotal, modified, upserted) =>
+      UpdateResult(
+        modified + upserted,
+        recordsTotal - modified - upserted
+      )
+  }
 
   def bulkAdd(builds: Seq[Build]): Future[UpdateResult] =
     bulkInsert(builds) map {
