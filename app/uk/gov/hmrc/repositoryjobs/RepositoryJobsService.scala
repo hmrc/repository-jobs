@@ -41,28 +41,30 @@ class RepositoryJobsService @Inject()(
     key(jobName.getOrElse("no-job-name"), timestamp.getOrElse(0l))
 
   def update: Future[UpdateResult] = {
+    val devBuildsResponseF: Future[JenkinsJobsResponse]  = jenkinsDevConnector.getBuilds
+    val openBuildsResponseF: Future[JenkinsJobsResponse] = jenkinsOpenConnector.getBuilds
+    val existingBuildsF: Future[Seq[Build]]              = repository.getAll
+
     Logger.info("Starting repository jobs update")
     (for {
-      devBuildsResponse <- jenkinsDevConnector.getBuilds
+      devBuildsResponse <- devBuildsResponseF
       _ = Logger.info(
         s"Fetched builds from jenkins ci-dev. Number of builds: ${devBuildsResponse.jobs.map(_.allBuilds.size).sum}")
 
-      openBuildsResponse <- jenkinsOpenConnector.getBuilds
+      openBuildsResponse <- openBuildsResponseF
       _ = Logger.info(
         s"Fetched builds from jenkins ci-open. Number of builds: ${openBuildsResponse.jobs.map(_.allBuilds.size).sum}")
 
-      existingBuilds <- repository.getAll
+      existingBuilds <- existingBuildsF
       _ = Logger.info(s"Fetched existing repositories from mongo.  Number of existing builds: ${existingBuilds.size}")
 
-      newBuildsFromDev = getBuilds(devBuildsResponse.jobs, existingBuilds)
-      _ = Logger.info(
-        s"Calculated new builds to be saved from jenkins ci-dev. Number of new builds: ${newBuildsFromDev.size}")
+      allJobs = devBuildsResponse.jobs ++ openBuildsResponse.jobs
 
-      newBuildsFromOpen = getBuilds(openBuildsResponse.jobs, existingBuilds)
+      newBuilds = getBuilds(allJobs, existingBuilds)
       _ = Logger.info(
-        s"Calculated new builds to be saved from jenkins ci-open. Number of new builds: ${newBuildsFromOpen.size}")
+        s"Calculated new builds to be saved from jenkins ci-dev and ci-open. Number of new builds: ${newBuilds.size}")
 
-      result <- repository.bulkAdd(newBuildsFromDev ++ newBuildsFromOpen)
+      result <- repository.bulkAdd(newBuilds)
     } yield result)
       .map { updateResult =>
         Logger.info(s"Completed repository jobs update: $updateResult")
