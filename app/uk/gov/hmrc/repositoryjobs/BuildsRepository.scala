@@ -19,7 +19,6 @@ package uk.gov.hmrc.repositoryjobs
 import javax.inject.{Inject, Singleton}
 import play.api.Logger
 import play.api.libs.functional.syntax._
-import play.api.libs.json.Json.toJson
 import play.api.libs.json.Reads._
 import play.api.libs.json._
 import play.modules.reactivemongo.ReactiveMongoComponent
@@ -29,8 +28,9 @@ import reactivemongo.api.commands.{Command, MultiBulkWriteResult}
 import reactivemongo.api.indexes.Index
 import reactivemongo.api.indexes.IndexType.Descending
 import reactivemongo.bson.{BSONDocument, BSONElement, BSONObjectID}
+import reactivemongo.play.json.BSONFormats.toJSON
 import reactivemongo.play.json.ImplicitBSONHandlers._
-import reactivemongo.play.json.{BSONFormats, ImplicitBSONHandlers, JSONSerializationPack}
+import reactivemongo.play.json.JSONSerializationPack
 import uk.gov.hmrc.mongo.ReactiveRepository
 
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -53,54 +53,72 @@ object Build {
 }
 
 @Singleton
-class BuildsRepository @Inject()(mongo: ReactiveMongoComponent)
+class BuildsRepository private[repositoryjobs] (mongo: ReactiveMongoComponent, buildToJson: Build => JsValue)
     extends ReactiveRepository[Build, BSONObjectID](
       collectionName = "builds",
       mongo          = mongo.mongoConnector.db,
       domainFormat   = Build.formats) {
+
+  @Inject() def this(mongo: ReactiveMongoComponent) = this(mongo, (build: Build) => Json.toJson(build))
 
   override def indexes: Seq[Index] = Seq(
     Index(key = Seq("repositoryName" -> Descending), background = true),
     Index(key = Seq("jobName"        -> Descending, "timestamp" -> Descending), background = true)
   )
 
-  def persist(builds: Seq[Build]): Future[UpdateResult] = {
-    import ImplicitBSONHandlers._
+  def persist(builds: Seq[Build]): Future[UpdateResult] = builds match {
+    case Nil =>
+      Future.successful(UpdateResult(nSuccesses = 0, nFailures = 0))
+    case _ =>
+      val commandDocument = Json.obj(
+        "update" -> collection.name,
+        "updates" -> builds.map { build =>
+          Json.obj(
+            "q"      -> Json.obj("jobName" -> build.jobName, "timestamp" -> build.timestamp),
+            "u"      -> buildToJson(build),
+            "upsert" -> true,
+            "multi"  -> false
+          )
+        }
+      )
 
-    val commandDoc = Json.obj(
-      "update" -> collection.name,
-      "updates" -> builds.map { build =>
-        Json.obj(
-          "q"      -> Json.obj("jobName" -> build.jobName, "timestamp" -> build.timestamp),
-          "u"      -> toJson(build),
-          "upsert" -> true,
-          "multi"  -> false)
-      }
-    )
-    val runner = Command.run(JSONSerializationPack, FailoverStrategy.default)
+      val runner = Command.run(JSONSerializationPack, FailoverStrategy.default)
 
-    runner(mongo.mongoConnector.db(), runner.rawCommand(commandDoc))
-      .one[BSONDocument](primaryPreferred)
-      .map(bsonToJson)
-      .map(_.as[UpdateResult])
+      runner(mongo.mongoConnector.db(), runner.rawCommand(commandDocument))
+        .one[BSONDocument](primaryPreferred)
+        .map(bsonToJson)
+        .map(_.as[UpdateResult](updateResultReads(builds)))
   }
 
-  private val bsonToJson: BSONDocument => JsValue =
-    bson =>
-      JsObject(bson.elements.map {
-        case BSONElement(name, value) => name -> BSONFormats.toJSON(value)
-      })
+  private def bsonToJson(bson: BSONDocument): JsValue =
+    JsObject(bson.elements.map {
+      case BSONElement(name, value) => name -> toJSON(value)
+    })
 
-  private implicit val updateResultReads: Reads[UpdateResult] = (
-    (__ \ "n").read[Int] and
+  private def updateResultReads(builds: Seq[Build]): Reads[UpdateResult] = {
+    implicit val errorReads: Reads[(Int, String)] = (
+      (__ \ "index").read[Int] and
+        (__ \ "errmsg").read[String]
+    ).tupled
+
+    val logError: ((Int, String)) => Unit = {
+      case (recordIndex, errorMessage) =>
+        Logger.error(s"${builds(recordIndex)} couldn't be stored in Mongo; error: $errorMessage")
+    }
+
+    (
       (__ \ "nModified").read[Int] and
-      (__ \ "upserted").read[Seq[JsValue]].map(_.size)
-  ).tupled.map {
-    case (recordsTotal, modified, upserted) =>
-      UpdateResult(
-        modified + upserted,
-        recordsTotal - modified - upserted
-      )
+        (__ \ "upserted").readNullable[Seq[JsValue]].map(_.map(_.size).getOrElse(0)) and
+        (__ \ "writeErrors").readNullable[Seq[(Int, String)]].map(_.getOrElse(Nil))
+    ).tupled.map {
+      case (modified, upserted, errors) =>
+        errors foreach logError
+
+        UpdateResult(
+          nSuccesses = modified + upserted,
+          nFailures  = errors.size
+        )
+    }
   }
 
   def bulkAdd(builds: Seq[Build]): Future[UpdateResult] =
