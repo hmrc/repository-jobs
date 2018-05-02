@@ -118,7 +118,7 @@ class BuildsMongoRepositorySpec extends UnitSpec with MongoSpecSupport with Befo
           "builtOn"        -> "ci-slave-9"
         )))
 
-      val builds = await(buildsRepository.getAllByRepo)
+      val builds = await(buildsRepository.findAll().map(_.groupBy(_.repositoryName.getOrElse("no-repo-name"))))
 
       val catoBuilds = builds("cato-acceptance-tests")
       catoBuilds.size                    shouldBe 1

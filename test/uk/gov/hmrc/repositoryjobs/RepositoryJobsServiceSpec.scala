@@ -52,19 +52,16 @@ class RepositoryJobsServiceSpec extends WordSpec with Matchers with ScalaFutures
     }
   }
 
-  val repoName = "repoName"
-
-  val serviceGitConfig =
-    Scm(List(UserRemoteConfig(repoName.some)).some)
-
   val repository: BuildsRepository            = mock[BuildsRepository]
   val connectorCiDev: JenkinsCiDevConnector   = mock[JenkinsCiDevConnector]
   val connectorCiOpen: JenkinsCiOpenConnector = mock[JenkinsCiOpenConnector]
 
   val repositoryJobsService = new RepositoryJobsService(repository, connectorCiDev, connectorCiOpen)
 
-  val jobName = "jobName"
-  val jobUrl  = "jobUrl"
+  val repoName         = "repoName"
+  val serviceGitConfig = Scm(List(UserRemoteConfig(repoName.some)).some)
+  val jobName          = "jobName"
+  val jobUrl           = "jobUrl"
 
   val validBuildResponseDev =
     BuildResponse(

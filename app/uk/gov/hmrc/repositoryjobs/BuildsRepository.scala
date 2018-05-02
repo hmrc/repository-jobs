@@ -24,7 +24,7 @@ import play.api.libs.json._
 import play.modules.reactivemongo.ReactiveMongoComponent
 import reactivemongo.api.FailoverStrategy
 import reactivemongo.api.ReadPreference.primaryPreferred
-import reactivemongo.api.commands.{Command, MultiBulkWriteResult}
+import reactivemongo.api.commands.Command
 import reactivemongo.api.indexes.Index
 import reactivemongo.api.indexes.IndexType.Descending
 import reactivemongo.bson.{BSONDocument, BSONElement, BSONObjectID}
@@ -35,7 +35,6 @@ import uk.gov.hmrc.mongo.ReactiveRepository
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
-import scala.util.control.NonFatal
 
 case class Build(
   repositoryName: Option[String],
@@ -61,75 +60,14 @@ class BuildsRepository private[repositoryjobs] (mongo: ReactiveMongoComponent, b
 
   @Inject() def this(mongo: ReactiveMongoComponent) = this(mongo, (build: Build) => Json.toJson(build))
 
+  // According to mongo documentation this is the limit of operations in one batch
+  // https://docs.mongodb.com/v3.2/reference/limits/#Write-Command-Operation-Limit-Size
+  private val MAX_BATCH_SIZE = 1000
+
   override def indexes: Seq[Index] = Seq(
     Index(key = Seq("repositoryName" -> Descending), background = true),
     Index(key = Seq("jobName"        -> Descending, "timestamp" -> Descending), background = true)
   )
-
-  def persist(builds: Seq[Build]): Future[UpdateResult] = builds match {
-    case Nil =>
-      Future.successful(UpdateResult(nSuccesses = 0, nFailures = 0))
-    case _ =>
-      val commandDocument = Json.obj(
-        "update" -> collection.name,
-        "updates" -> builds.map { build =>
-          Json.obj(
-            "q"      -> Json.obj("jobName" -> build.jobName, "timestamp" -> build.timestamp),
-            "u"      -> buildToJson(build),
-            "upsert" -> true,
-            "multi"  -> false
-          )
-        }
-      )
-
-      val runner = Command.run(JSONSerializationPack, FailoverStrategy.default)
-
-      runner(mongo.mongoConnector.db(), runner.rawCommand(commandDocument))
-        .one[BSONDocument](primaryPreferred)
-        .map(bsonToJson)
-        .map(_.as[UpdateResult](updateResultReads(builds)))
-  }
-
-  private def bsonToJson(bson: BSONDocument): JsValue =
-    JsObject(bson.elements.map {
-      case BSONElement(name, value) => name -> toJSON(value)
-    })
-
-  private def updateResultReads(builds: Seq[Build]): Reads[UpdateResult] = {
-    implicit val errorReads: Reads[(Int, String)] = (
-      (__ \ "index").read[Int] and
-        (__ \ "errmsg").read[String]
-    ).tupled
-
-    val logError: ((Int, String)) => Unit = {
-      case (recordIndex, errorMessage) =>
-        Logger.error(s"${builds(recordIndex)} couldn't be stored in Mongo; error: $errorMessage")
-    }
-
-    (
-      (__ \ "nModified").read[Int] and
-        (__ \ "upserted").readNullable[Seq[JsValue]].map(_.map(_.size).getOrElse(0)) and
-        (__ \ "writeErrors").readNullable[Seq[(Int, String)]].map(_.getOrElse(Nil))
-    ).tupled.map {
-      case (modified, upserted, errors) =>
-        errors foreach logError
-
-        UpdateResult(
-          nSuccesses = modified + upserted,
-          nFailures  = errors.size
-        )
-    }
-  }
-
-  def bulkAdd(builds: Seq[Build]): Future[UpdateResult] =
-    bulkInsert(builds) map {
-      case MultiBulkWriteResult(_, n, _, _, writeErrors, _, _, _, _) =>
-        UpdateResult(n, writeErrors.size)
-    } recoverWith {
-      case NonFatal(ex) =>
-        Logger.error(s"An exception [$ex] occurred while performing a bulk insert of the following builds: [$builds]")
-        Future.failed(ex)
-    }
 
   def getForRepository(repositoryName: String): Future[Seq[Build]] =
     find("repositoryName" -> BSONDocument("$eq" -> repositoryName)) map {
@@ -137,10 +75,81 @@ class BuildsRepository private[repositoryjobs] (mongo: ReactiveMongoComponent, b
       case data => data
     }
 
-  def getAllByRepo: Future[Map[String, Seq[Build]]] =
-    findAll() map { data =>
-      data.groupBy(_.repositoryName.getOrElse("no-repo-name"))
-    }
+  def persist(builds: Seq[Build]): Future[UpdateResult] = builds match {
+    case Nil =>
+      Future.successful(UpdateResult(nSuccesses = 0, nFailures = 0))
+    case _ =>
+      builds.grouped(MAX_BATCH_SIZE).foldLeft(Future.successful(UpdateResult(0, 0))) { (futAccumulatedResults, chunk) =>
+        for {
+          accumulatedResults <- futAccumulatedResults
+          updateResult       <- persistChunk(chunk)
+        } yield
+          UpdateResult(
+            nSuccesses = accumulatedResults.nSuccesses + updateResult.nSuccesses,
+            nFailures  = accumulatedResults.nFailures + updateResult.nFailures
+          )
+      }
+  }
 
-  def getAll: Future[Seq[Build]] = findAll()
+  private def persistChunk(builds: Seq[Build]): Future[UpdateResult] = {
+    val updateCommand = Json.obj(
+      "update" -> collection.name,
+      "updates" -> builds.map { build =>
+        Json.obj(
+          "q"      -> Json.obj("jobName" -> build.jobName, "timestamp" -> build.timestamp),
+          "u"      -> buildToJson(build),
+          "upsert" -> true,
+          "multi"  -> false
+        )
+      }
+    )
+
+    execute(updateCommand)
+      .map(_.as[CommandResult])
+      .map(logErrors(builds))
+      .map(commandResult => UpdateResult(commandResult.nSuccesses, commandResult.errors.size))
+  }
+
+  private def execute(command: JsObject): Future[JsValue] = {
+    def bsonToJson(bson: BSONDocument): JsValue =
+      JsObject(bson.elements.map {
+        case BSONElement(name, value) => name -> toJSON(value)
+      })
+
+    val runner = Command.run(JSONSerializationPack, FailoverStrategy.default)
+
+    runner(mongo.mongoConnector.db(), runner.rawCommand(command))
+      .one[BSONDocument](primaryPreferred)
+      .map(bsonToJson)
+  }
+
+  private case class CommandResult(nSuccesses: Int, errors: Seq[CommandError])
+  private case class CommandError(recordIndex: Int, message: String)
+
+  private implicit val updateResultReads: Reads[CommandResult] = {
+    implicit val errorReads: Reads[CommandError] = (
+      (__ \ "index").read[Int] and
+        (__ \ "errmsg").read[String]
+    )(CommandError.apply _)
+
+    (
+      (__ \ "nModified").readNullable[Int].map(_.getOrElse(0)) and
+        (__ \ "upserted").readNullable[Seq[JsValue]].map(_.map(_.size).getOrElse(0)) and
+        (__ \ "writeErrors").readNullable[Seq[CommandError]].map(_.getOrElse(Nil))
+    ).tupled.map {
+      case (modified, upserted, errors) =>
+        CommandResult(
+          nSuccesses = modified + upserted,
+          errors     = errors
+        )
+    }
+  }
+
+  private def logErrors(builds: Seq[Build])(commandResult: CommandResult): CommandResult = {
+    commandResult.errors foreach {
+      case CommandError(recordIndex, errorMessage) =>
+        Logger.error(s"${builds(recordIndex)} couldn't be stored in Mongo; error: $errorMessage")
+    }
+    commandResult
+  }
 }
