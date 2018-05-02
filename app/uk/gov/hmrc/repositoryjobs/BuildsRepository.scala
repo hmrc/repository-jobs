@@ -18,15 +18,23 @@ package uk.gov.hmrc.repositoryjobs
 
 import javax.inject.{Inject, Singleton}
 import play.api.Logger
-import play.api.libs.json.Json
+import play.api.libs.functional.syntax._
+import play.api.libs.json.Reads._
+import play.api.libs.json._
 import play.modules.reactivemongo.ReactiveMongoComponent
-import reactivemongo.api.commands.MultiBulkWriteResult
-import reactivemongo.bson.{BSONDocument, BSONObjectID}
+import reactivemongo.api.FailoverStrategy
+import reactivemongo.api.ReadPreference.primaryPreferred
+import reactivemongo.api.commands.Command
+import reactivemongo.api.indexes.Index
+import reactivemongo.api.indexes.IndexType.Descending
+import reactivemongo.bson.{BSONDocument, BSONElement, BSONObjectID}
+import reactivemongo.play.json.BSONFormats.toJSON
 import reactivemongo.play.json.ImplicitBSONHandlers._
+import reactivemongo.play.json.JSONSerializationPack
+import uk.gov.hmrc.mongo.ReactiveRepository
+
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
-import scala.util.control.NonFatal
-import uk.gov.hmrc.mongo.ReactiveRepository
 
 case class Build(
   repositoryName: Option[String],
@@ -40,25 +48,26 @@ case class Build(
   builtOn: Option[String])
 
 object Build {
-  implicit val formats = Json.format[Build]
+  implicit val formats: OFormat[Build] = Json.format[Build]
 }
 
 @Singleton
-class BuildsRepository @Inject()(mongo: ReactiveMongoComponent)
+class BuildsRepository private[repositoryjobs] (mongo: ReactiveMongoComponent, buildToJson: Build => JsValue)
     extends ReactiveRepository[Build, BSONObjectID](
       collectionName = "builds",
       mongo          = mongo.mongoConnector.db,
       domainFormat   = Build.formats) {
 
-  def bulkAdd(builds: Seq[Build]): Future[UpdateResult] =
-    bulkInsert(builds) map {
-      case MultiBulkWriteResult(_, n, _, _, writeErrors, _, _, _, _) =>
-        UpdateResult(n, writeErrors.size)
-    } recoverWith {
-      case NonFatal(ex) =>
-        Logger.error(s"An exception [$ex] occurred while performing a bulk insert of the following builds: [$builds]")
-        Future.failed(ex)
-    }
+  @Inject() def this(mongo: ReactiveMongoComponent) = this(mongo, (build: Build) => Json.toJson(build))
+
+  // According to mongo documentation this is the limit of operations in one batch
+  // https://docs.mongodb.com/v3.2/reference/limits/#Write-Command-Operation-Limit-Size
+  private val MAX_BATCH_SIZE = 1000
+
+  override def indexes: Seq[Index] = Seq(
+    Index(key = Seq("repositoryName" -> Descending), background = true),
+    Index(key = Seq("jobName"        -> Descending, "timestamp" -> Descending), background = true)
+  )
 
   def getForRepository(repositoryName: String): Future[Seq[Build]] =
     find("repositoryName" -> BSONDocument("$eq" -> repositoryName)) map {
@@ -66,10 +75,81 @@ class BuildsRepository @Inject()(mongo: ReactiveMongoComponent)
       case data => data
     }
 
-  def getAllByRepo: Future[Map[String, Seq[Build]]] =
-    findAll() map { data =>
-      data.groupBy(_.repositoryName.getOrElse("no-repo-name"))
-    }
+  def persist(builds: Seq[Build]): Future[UpdateResult] = builds match {
+    case Nil =>
+      Future.successful(UpdateResult(nSuccesses = 0, nFailures = 0))
+    case _ =>
+      builds.grouped(MAX_BATCH_SIZE).foldLeft(Future.successful(UpdateResult(0, 0))) { (futAccumulatedResults, chunk) =>
+        for {
+          accumulatedResults <- futAccumulatedResults
+          updateResult       <- persistChunk(chunk)
+        } yield
+          UpdateResult(
+            nSuccesses = accumulatedResults.nSuccesses + updateResult.nSuccesses,
+            nFailures  = accumulatedResults.nFailures + updateResult.nFailures
+          )
+      }
+  }
 
-  def getAll: Future[Seq[Build]] = findAll()
+  private def persistChunk(builds: Seq[Build]): Future[UpdateResult] = {
+    val updateCommand = Json.obj(
+      "update" -> collection.name,
+      "updates" -> builds.map { build =>
+        Json.obj(
+          "q"      -> Json.obj("jobName" -> build.jobName, "timestamp" -> build.timestamp),
+          "u"      -> buildToJson(build),
+          "upsert" -> true,
+          "multi"  -> false
+        )
+      }
+    )
+
+    execute(updateCommand)
+      .map(_.as[CommandResult])
+      .map(logErrors(builds))
+      .map(commandResult => UpdateResult(commandResult.nSuccesses, commandResult.errors.size))
+  }
+
+  private def execute(command: JsObject): Future[JsValue] = {
+    def bsonToJson(bson: BSONDocument): JsValue =
+      JsObject(bson.elements.map {
+        case BSONElement(name, value) => name -> toJSON(value)
+      })
+
+    val runner = Command.run(JSONSerializationPack, FailoverStrategy.default)
+
+    runner(mongo.mongoConnector.db(), runner.rawCommand(command))
+      .one[BSONDocument](primaryPreferred)
+      .map(bsonToJson)
+  }
+
+  private case class CommandResult(nSuccesses: Int, errors: Seq[CommandError])
+  private case class CommandError(recordIndex: Int, message: String)
+
+  private implicit val updateResultReads: Reads[CommandResult] = {
+    implicit val errorReads: Reads[CommandError] = (
+      (__ \ "index").read[Int] and
+        (__ \ "errmsg").read[String]
+    )(CommandError.apply _)
+
+    (
+      (__ \ "nModified").readNullable[Int].map(_.getOrElse(0)) and
+        (__ \ "upserted").readNullable[Seq[JsValue]].map(_.map(_.size).getOrElse(0)) and
+        (__ \ "writeErrors").readNullable[Seq[CommandError]].map(_.getOrElse(Nil))
+    ).tupled.map {
+      case (modified, upserted, errors) =>
+        CommandResult(
+          nSuccesses = modified + upserted,
+          errors     = errors
+        )
+    }
+  }
+
+  private def logErrors(builds: Seq[Build])(commandResult: CommandResult): CommandResult = {
+    commandResult.errors foreach {
+      case CommandError(recordIndex, errorMessage) =>
+        Logger.error(s"${builds(recordIndex)} couldn't be stored in Mongo; error: $errorMessage")
+    }
+    commandResult
+  }
 }
