@@ -1,4 +1,5 @@
 import uk.gov.hmrc.DefaultBuildSettings.integrationTestSettings
+import uk.gov.hmrc.sbtdistributables.SbtDistributablesPlugin.publishingSettings
 
 val appName = "repository-jobs"
 
@@ -14,5 +15,6 @@ lazy val root = Project(appName, file("."))
         Resolver.typesafeRepo("releases")
       )
   )
-  .configs(IntegrationTest)
+  .settings(publishingSettings: _*)
   .settings(integrationTestSettings(): _*)
+  .configs(IntegrationTest)
