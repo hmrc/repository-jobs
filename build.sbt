@@ -6,7 +6,6 @@ lazy val root = Project(appName, file("."))
   .enablePlugins(play.sbt.PlayScala, SbtAutoBuildPlugin, SbtGitVersioning, SbtDistributablesPlugin)
   .settings(
     scalaVersion        := "2.11.12",
-    crossScalaVersions  := Seq("2.11.12", "2.12.6"),
     libraryDependencies ++= AppDependencies.compile ++ AppDependencies.test,
     PlayKeys.playDefaultPort := 8457,
     resolvers           :=
