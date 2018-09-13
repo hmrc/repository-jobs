@@ -8,7 +8,6 @@ object AppDependencies {
     "uk.gov.hmrc" %% "play-reactivemongo" % "6.1.0",
     ws,
     "uk.gov.hmrc"   %% "bootstrap-play-25" % "3.3.0",
-    "uk.gov.hmrc"   %% "play-url-binders"  % "2.1.0",
     "uk.gov.hmrc"   %% "mongo-lock"        % "5.0.0",
     "uk.gov.hmrc"   %% "domain"            % "4.1.0",
     "org.typelevel" %% "cats-core"         % "0.9.0"
