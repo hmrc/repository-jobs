@@ -19,6 +19,7 @@ package uk.gov.hmrc.repositoryjobs
 import javax.inject.{Inject, Singleton}
 import play.Logger
 import play.api.libs.json.{Json, OFormat}
+import uk.gov.hmrc.http.HeaderCarrier
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 import scala.util.Try
@@ -28,11 +29,15 @@ import scala.util.control.NonFatal
 class RepositoryJobsService @Inject()(
   repository: BuildsRepository,
   jenkinsDevConnector: JenkinsCiDevConnector,
-  jenkinsOpenConnector: JenkinsCiOpenConnector) {
+  jenkinsOpenConnector: JenkinsCiOpenConnector,
+  jenkinsBuildConnector: JenkinsBuildConnector) {
+
+  implicit val hc: HeaderCarrier = HeaderCarrier()
 
   def update: Future[UpdateResult] = {
     val devBuildsResponseF: Future[JenkinsJobsResponse]  = jenkinsDevConnector.getBuilds
     val openBuildsResponseF: Future[JenkinsJobsResponse] = jenkinsOpenConnector.getBuilds
+    val buildsResponseF: Future[JenkinsJobsResponse]     = jenkinsBuildConnector.getBuilds
 
     Logger.info("Starting repository jobs update")
     (for {
@@ -44,7 +49,11 @@ class RepositoryJobsService @Inject()(
       _ = Logger.info(
         s"Fetched builds from jenkins ci-open. Number of builds: ${openBuildsResponse.jobs.map(_.allBuilds.size).sum}")
 
-      allJobs = devBuildsResponse.jobs ++ openBuildsResponse.jobs
+      buildsResponse <- buildsResponseF
+      _ = Logger.info(
+        s"Fetched builds from jenkins build. Number of builds: ${buildsResponse.jobs.map(_.allBuilds.size).sum}")
+
+      allJobs = devBuildsResponse.jobs ++ openBuildsResponse.jobs ++ buildsResponse.jobs
 
       result <- repository.persist(convertToBuilds(allJobs))
     } yield result)

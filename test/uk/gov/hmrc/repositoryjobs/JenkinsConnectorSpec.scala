@@ -18,13 +18,21 @@ package uk.gov.hmrc.repositoryjobs
 
 import cats.syntax.option._
 import com.github.tomakehurst.wiremock.http.RequestMethod._
+import com.google.common.io.BaseEncoding
+import org.mockito.ArgumentCaptor
+import org.mockito.Matchers.any
+import org.mockito.Mockito.when
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.mock.MockitoSugar
 import org.scalatest.time.{Millis, Span}
 import org.scalatest.{Matchers, OptionValues, WordSpec}
 import org.scalatestplus.play.OneAppPerSuite
+import uk.gov.hmrc.http.logging.Authorization
+import uk.gov.hmrc.http.{HeaderCarrier, HttpResponse}
 import uk.gov.hmrc.play.bootstrap.http.HttpClient
 import uk.gov.hmrc.repositoryjobs.config.RepositoryJobsConfig
+import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.Future
 
 class JenkinsConnectorSpec
     extends WordSpec
@@ -34,13 +42,11 @@ class JenkinsConnectorSpec
     with OneAppPerSuite
     with OptionValues
     with MockitoSugar {
-  implicit val defaultPatienceConfig =
-    new PatienceConfig(Span(200, Millis), Span(15, Millis))
+  implicit val defaultPatienceConfig: PatienceConfig = PatienceConfig(Span(200, Millis), Span(15, Millis))
+  implicit val hc: HeaderCarrier                     = HeaderCarrier()
 
   "Getting all jobs from jenkins" should {
-
     "Deserialise the response upon a successful request" in {
-
       val connector = new JenkinsCiDevConnector(app.injector.instanceOf[HttpClient], mock[RepositoryJobsConfig]) {
         override val host: String = endpointMockUrl
       }
@@ -71,7 +77,6 @@ class JenkinsConnectorSpec
     }
 
     "handle control characters in the response body" in {
-
       val connector = new JenkinsCiDevConnector(app.injector.instanceOf[HttpClient], mock[RepositoryJobsConfig]) {
         override val host: String = endpointMockUrl
       }
@@ -90,6 +95,71 @@ class JenkinsConnectorSpec
 
     }
 
+  }
+
+  "Getting all jobs from jenkins new build" should {
+    "Deserialise the response containing a nested collection of folders and jobs upon a successful request" in {
+      val connector = new JenkinsBuildConnector(app.injector.instanceOf[HttpClient], mock[RepositoryJobsConfig]) {
+        override val host: String = endpointMockUrl
+      }
+
+      serviceEndpoint(GET, connector.buildsUrl, willRespondWith = (200, Some(JsonData.jenkinsJobsNewBuildResponse)))
+
+      val result = connector.getBuilds
+
+      result.futureValue.jobs.length shouldBe 1
+
+      val job = result.futureValue.jobs.head
+
+      job.name                                       shouldBe "platops-example-api-tests".some
+      job.allBuilds                                  shouldBe empty
+      job.scm.value.userRemoteConfigs.value.head.url shouldBe "https://github.com/hmrc/platops-example-api-tests.git".some
+    }
+
+    "handle control characters in the response body" in {
+      val connector = new JenkinsBuildConnector(app.injector.instanceOf[HttpClient], mock[RepositoryJobsConfig]) {
+        override val host: String = endpointMockUrl
+      }
+
+      serviceEndpoint(
+        GET,
+        connector.buildsUrl,
+        willRespondWith = (200, Some(JsonData.jenkinsJobsNewBuildResponseWithControlCharacters)))
+
+      val result = connector.getBuilds
+
+      result.futureValue.jobs.length shouldBe 1
+
+      val job = result.futureValue.jobs.head
+      job.name shouldBe "platops-example-api-tests".some
+    }
+  }
+
+  "The jenkins connector" should {
+    "use basic auth if an authorization header is provided" in {
+      val httpClient                 = mock[HttpClient]
+      val expectedHttpResponse       = HttpResponse(200, responseString = Some(JsonData.jenkinsJobsNewBuildResponse))
+      implicit val hc: HeaderCarrier = HeaderCarrier(authorization = None)
+
+      val argumentCaptor = ArgumentCaptor.forClass(classOf[HeaderCarrier])
+
+      when(
+        httpClient
+          .GET[HttpResponse](any())(any(), argumentCaptor.capture(), any()))
+        .thenReturn(Future(expectedHttpResponse))
+
+      val repositoryJobsConfig = mock[RepositoryJobsConfig]
+
+      val connector = new JenkinsBuildConnector(httpClient, repositoryJobsConfig)
+
+      val _ = connector.getBuilds.futureValue
+
+      val encodedCredentials = BaseEncoding
+        .base64()
+        .encode(s"${repositoryJobsConfig.username}:${repositoryJobsConfig.password}".getBytes("UTF-8"))
+
+      argumentCaptor.getValue.authorization shouldBe Some(Authorization(s"Basic $encodedCredentials"))
+    }
   }
 
 }

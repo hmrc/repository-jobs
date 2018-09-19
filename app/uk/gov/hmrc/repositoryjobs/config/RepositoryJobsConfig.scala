@@ -33,6 +33,18 @@ class RepositoryJobsConfig @Inject()(configuration: Configuration) {
     config("jobs.api.url.ci-open").getOrElse(
       throw new RuntimeException("Error getting config value jobs.api.url.ci-open"))
 
+  def ciBuildUrl: String =
+    config("jobs.api.url.ci-build").getOrElse(
+      throw new RuntimeException("Error getting config value jobs.api.url.ci-build"))
+
+  def username: String =
+    config("jobs.api.basicAuth.username").getOrElse(
+      throw new RuntimeException("Error getting config value jobs.api.basicAuth.username"))
+
+  def password: String =
+    config("jobs.api.basicAuth.password").getOrElse(
+      throw new RuntimeException("Error getting config value jobs.api.basicAuth.password"))
+
   private def config(path: String) = configuration.getString(s"$path")
 
 }

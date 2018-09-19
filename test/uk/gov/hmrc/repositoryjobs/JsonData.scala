@@ -18,7 +18,7 @@ package uk.gov.hmrc.repositoryjobs
 
 object JsonData {
 
-  val jenkinsJobsResponse =
+  val jenkinsJobsResponse: String =
     s"""{
         |    "jobs":[
         |        {
@@ -48,9 +48,42 @@ object JsonData {
         |}
      """.stripMargin
 
+  val jenkinsJobsNewBuildResponse: String =
+    s"""
+       |{
+       |  "_class": "hudson.model.Hudson",
+       |  "jobs": [
+       |    {
+       |      "_class": "com.cloudbees.hudson.plugins.folder.Folder",
+       |      "name": "PlatOps Examples",
+       |      "jobs": [
+       |        {
+       |          "_class": "hudson.model.FreeStyleProject",
+       |          "name": "platops-example-api-tests",
+       |          "allBuilds": [],
+       |          "scm": {
+       |            "_class": "hudson.plugins.git.GitSCM",
+       |            "userRemoteConfigs": [
+       |              {
+       |                "url": "https://github.com/hmrc/platops-example-api-tests.git"
+       |              }
+       |            ]
+       |          }
+       |        },
+       |        {
+       |          "_class": "org.jenkinsci.plugins.workflow.job.WorkflowJob",
+       |          "name": "platops-example-backend-microservice-pipeline",
+       |          "allBuilds":[]
+       |        }
+       |      ]
+       |    }
+       |  ]
+       |}
+     """.stripMargin
+
   private val controlCharacters = ((1.toChar to 31.toChar).toList :+ 127.toChar).mkString
 
-  val jenkinsJobsResponseWithControlCharacters =
+  val jenkinsJobsResponseWithControlCharacters: String =
     s"""{
         |    "jobs":[
         |        {
@@ -63,5 +96,27 @@ object JsonData {
         |        }
         |    ]
         |}
+     """.stripMargin
+
+  val jenkinsJobsNewBuildResponseWithControlCharacters: String =
+    s"""
+       |{
+       |  "_class": "hudson.model.Hudson",
+       |  "jobs": [
+       |    {
+       |      "_class": "com.cloudbees.hudson.plugins.folder.Folder",
+       |      "name": "PlatOps Examples",
+       |      "jobs": [
+       |        {
+       |          "_class": "hudson.model.FreeStyleProject",
+       |          "name": "platops-example-api-tests"$controlCharacters,
+       |          "allBuilds": [],
+       |          "scm": {
+       |          }
+       |        }
+       |      ]
+       |    }
+       |  ]
+       |}
      """.stripMargin
 }
