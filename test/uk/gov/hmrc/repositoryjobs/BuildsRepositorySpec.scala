@@ -31,6 +31,8 @@ class BuildsRepositorySpec extends WordSpec with MongoSpecSupport with ScalaFutu
 
   "Builds repository" should {
     "ensure indexes are created" in new Setup {
+      Thread.sleep(2000) // quick fix workaround for race condition creating indexes
+
       val indexes = repository.collection.indexesManager.list().futureValue
 
       indexes.map(index => index.key -> index.background) should contain allOf (
