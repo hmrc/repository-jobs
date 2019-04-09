@@ -19,12 +19,12 @@ package uk.gov.hmrc.repositoryjobs
 import javax.inject.{Inject, Singleton}
 import play.api.libs.json.Json
 import play.api.mvc._
-import scala.concurrent.Future
 import uk.gov.hmrc.play.bootstrap.controller.BaseController
-import uk.gov.hmrc.play.http.logging.MdcLoggingExecutionContext._
+
+import scala.concurrent.{ExecutionContext, Future}
 
 @Singleton
-class RepositoryJobsController @Inject()(buildRepository: BuildsRepository, service: RepositoryJobsService)
+class RepositoryJobsController @Inject()(buildRepository: BuildsRepository, service: RepositoryJobsService) (implicit ec: ExecutionContext)
     extends BaseController {
 
   def builds(repositoryName: String) = Action.async { implicit request =>
