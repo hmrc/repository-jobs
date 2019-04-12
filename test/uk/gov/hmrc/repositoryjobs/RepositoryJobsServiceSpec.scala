@@ -17,33 +17,34 @@
 package uk.gov.hmrc.repositoryjobs
 
 import cats.syntax.option._
+import org.mockito.Matchers.any
 import org.mockito.Mockito._
 import org.scalatest.concurrent.ScalaFutures
-import org.scalatest.mock.MockitoSugar
+import org.scalatest.mockito.MockitoSugar
 import org.scalatest.{Matchers, WordSpec}
 import uk.gov.hmrc.http.HeaderCarrier
+
 import scala.concurrent.Future
-import org.mockito.Matchers.any
 
 class RepositoryJobsServiceSpec extends WordSpec with Matchers with ScalaFutures with MockitoSugar {
 
   "Update" should {
     "fetch all builds from ci-open and ci-dev and new build and persist them" in {
-      when(connectorCiDev.getBuilds(any()))
+      when(connectorCiDev.getBuilds(any(), any()))
         .thenReturn(
           Future.successful(
             JenkinsJobsResponse(List(
               Job(jobName.some, jobUrl.some, List(validBuildResponseDev), serviceGitConfig.some)
             ))))
 
-      when(connectorCiOpen.getBuilds(any()))
+      when(connectorCiOpen.getBuilds(any(), any()))
         .thenReturn(
           Future.successful(
             JenkinsJobsResponse(List(
               Job(jobName.some, jobUrl.some, List(validBuildResponseOpen), serviceGitConfig.some)
             ))))
 
-      when(connectorCiBuild.getBuilds(any()))
+      when(connectorCiBuild.getBuilds(any(), any()))
         .thenReturn(
           Future.successful(
             JenkinsJobsResponse(

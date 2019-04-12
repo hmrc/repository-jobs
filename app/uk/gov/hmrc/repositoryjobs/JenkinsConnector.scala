@@ -23,12 +23,12 @@ import play.api.libs.json.{JsError, JsSuccess, Json, _}
 import uk.gov.hmrc.http.logging.Authorization
 import uk.gov.hmrc.http.{HeaderCarrier, HttpResponse}
 import uk.gov.hmrc.play.bootstrap.http.HttpClient
-import uk.gov.hmrc.play.http.logging.MdcLoggingExecutionContext.fromLoggingDetails
 import uk.gov.hmrc.repositoryjobs.JenkinsBuildJobsResponse.flattenJobs
 import uk.gov.hmrc.repositoryjobs.JenkinsConnector.apiTree
 import uk.gov.hmrc.repositoryjobs.JobTree.jobTreeReads
 import uk.gov.hmrc.repositoryjobs.config.RepositoryJobsConfig
-import scala.concurrent.Future
+
+import scala.concurrent.{ExecutionContext, Future}
 import scala.util.control.NonFatal
 import scala.util.{Failure, Success, Try}
 
@@ -46,7 +46,7 @@ trait JenkinsConnector {
 
   def convertJenkinsResponse(jenkinsResponse: JenkinsResponseType): JenkinsJobsResponse
 
-  def getBuilds(implicit hc: HeaderCarrier): Future[JenkinsJobsResponse] = {
+  def getBuilds(implicit hc: HeaderCarrier, ec: ExecutionContext): Future[JenkinsJobsResponse] = {
     val url = host + buildsUrl
 
     val result = http
@@ -85,7 +85,7 @@ object JenkinsConnector {
 }
 
 @Singleton
-class JenkinsCiDevConnector @Inject()(httpClient: HttpClient, repositoryJobsConfig: RepositoryJobsConfig)
+class JenkinsCiDevConnector @Inject()(httpClient: HttpClient, repositoryJobsConfig: RepositoryJobsConfig)(implicit ec: ExecutionContext)
     extends JenkinsConnector {
   override val host: String            = repositoryJobsConfig.ciDevUrl
   override val http: HttpClient        = httpClient
@@ -97,7 +97,7 @@ class JenkinsCiDevConnector @Inject()(httpClient: HttpClient, repositoryJobsConf
 }
 
 @Singleton
-class JenkinsCiOpenConnector @Inject()(httpClient: HttpClient, repositoryJobsConfig: RepositoryJobsConfig)
+class JenkinsCiOpenConnector @Inject()(httpClient: HttpClient, repositoryJobsConfig: RepositoryJobsConfig)(implicit ec: ExecutionContext)
     extends JenkinsConnector {
   override val host: String            = repositoryJobsConfig.ciOpenUrl
   override val http: HttpClient        = httpClient
@@ -110,7 +110,7 @@ class JenkinsCiOpenConnector @Inject()(httpClient: HttpClient, repositoryJobsCon
 }
 
 @Singleton
-class JenkinsBuildConnector @Inject()(httpClient: HttpClient, repositoryJobsConfig: RepositoryJobsConfig)
+class JenkinsBuildConnector @Inject()(httpClient: HttpClient, repositoryJobsConfig: RepositoryJobsConfig)(implicit ec: ExecutionContext)
     extends JenkinsConnector {
   override val host: String            = repositoryJobsConfig.ciBuildUrl
   override val http: HttpClient        = httpClient
