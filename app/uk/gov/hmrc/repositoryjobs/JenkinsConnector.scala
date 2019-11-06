@@ -28,6 +28,7 @@ import uk.gov.hmrc.repositoryjobs.JenkinsConnector.apiTree
 import uk.gov.hmrc.repositoryjobs.JobTree.jobTreeReads
 import uk.gov.hmrc.repositoryjobs.config.RepositoryJobsConfig
 
+import scala.annotation.tailrec
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.control.NonFatal
 import scala.util.{Failure, Success, Try}
@@ -143,6 +144,7 @@ object JenkinsBuildJobsResponse {
   }
 
   def flattenJobs(jenkinsBuildJobsResponse: JenkinsBuildJobsResponse): JenkinsJobsResponse = {
+    @tailrec
     def _flattenJobs(jobTree: Seq[JobTree], acc: Seq[Job]): Seq[Job] =
       jobTree match {
         case Nil => acc

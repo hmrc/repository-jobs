@@ -19,30 +19,31 @@ package uk.gov.hmrc.repositoryjobs
 import akka.actor.ActorSystem
 import com.kenshoo.play.metrics.Metrics
 import java.util.concurrent.TimeUnit
+
 import javax.inject.{Inject, Singleton}
-import org.joda.time.Duration
+import scala.concurrent.duration.Duration
 import play.Logger
-import play.modules.reactivemongo.ReactiveMongoComponent
+import uk.gov.hmrc.mongo.component.MongoComponent
+
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 import scala.concurrent.duration.FiniteDuration
 import scala.util.control.NonFatal
-import uk.gov.hmrc.lock.{LockKeeper, LockMongoRepository, LockRepository}
+import uk.gov.hmrc.mongo.lock._
 
 @Singleton
 class Scheduler @Inject()(
-  repositoryJobsService: RepositoryJobsService,
-  reactiveMongoComponent: ReactiveMongoComponent,
-  metrics: Metrics,
-  actorSystem: ActorSystem)
-    extends LockKeeper {
+                           repositoryJobsService: RepositoryJobsService,
+                           mongoLockRepo: MongoLockRepository,
+                           metrics: Metrics,
+                           actorSystem: ActorSystem)
+  extends MongoLockService {
 
-  override def lockId: String = "repository-jobs-scheduled-job"
+  override val lockId: String = "repository-jobs-scheduled-job"
 
-  override def repo: LockRepository =
-    LockMongoRepository(reactiveMongoComponent.mongoConnector.db)
+  override val mongoLockRepository: MongoLockRepository = mongoLockRepo
 
-  override val forceLockReleaseAfter: Duration = Duration.standardMinutes(30)
+  override val ttl: Duration = Duration(30, TimeUnit.MINUTES)
 
   def startUpdatingJobsModel(interval: FiniteDuration): Unit = {
     Logger.info(s"Initialising mongo update every $interval")
@@ -53,7 +54,7 @@ class Scheduler @Inject()(
   }
 
   private def updateRepositoryJobsModel(): Future[Unit] =
-    tryLock {
+    attemptLockWithRelease {
       repositoryJobsService.update.map(scheduledUpdateMetrics)
     } map { resultOrLocked =>
       resultOrLocked getOrElse {

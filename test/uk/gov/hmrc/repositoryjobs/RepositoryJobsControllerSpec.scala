@@ -20,8 +20,8 @@ import cats.syntax.option._
 import org.mockito.Matchers._
 import org.mockito.Mockito
 import org.mockito.Mockito.when
-import org.scalatest.mockito.MockitoSugar
-import org.scalatestplus.play.OneAppPerSuite
+import org.scalatestplus.mockito.MockitoSugar
+import org.scalatestplus.play.guice.GuiceOneAppPerSuite
 import play.api.libs.json.Json
 import play.api.test.FakeRequest
 import play.api.test.Helpers._
@@ -29,12 +29,12 @@ import uk.gov.hmrc.play.test.UnitSpec
 
 import scala.concurrent.ExecutionContext.Implicits.global
 
-class RepositoryJobsControllerSpec extends UnitSpec with MockitoSugar with OneAppPerSuite {
+class RepositoryJobsControllerSpec extends UnitSpec with MockitoSugar with GuiceOneAppPerSuite {
 
   "get repository builds" should {
 
     def controllerWithBuildsRepository(buildsRepository: BuildsRepository) =
-      new RepositoryJobsController(buildsRepository, mock[RepositoryJobsService])
+      new RepositoryJobsController(buildsRepository, mock[RepositoryJobsService], stubControllerComponents())
 
     "return a json formatted response containing info about the builds for that repository" in {
 
@@ -90,7 +90,7 @@ class RepositoryJobsControllerSpec extends UnitSpec with MockitoSugar with OneAp
 
   "reload repository jobs cache" should {
     def controllerWithRepositoryJobService(repositoryJobsService: RepositoryJobsService) =
-      new RepositoryJobsController(mock[BuildsRepository], repositoryJobsService)
+      new RepositoryJobsController(mock[BuildsRepository], repositoryJobsService, stubControllerComponents())
 
     "return 200 OK if all updates are successful" in {
       val mockRepositoryJobService = mock[RepositoryJobsService]

@@ -16,106 +16,78 @@
 
 package uk.gov.hmrc.repositoryjobs
 
+import org.mongodb.scala.bson.BsonDocument
+import org.mongodb.scala.model.IndexModel
 import org.scalacheck.Gen
 import org.scalatest.Matchers._
 import org.scalatest.WordSpec
-import org.scalatest.concurrent.{IntegrationPatience, ScalaFutures}
-import play.api.libs.json.{JsValue, Json}
-import play.modules.reactivemongo.ReactiveMongoComponent
-import reactivemongo.api.indexes.IndexType.Descending
-import uk.gov.hmrc.mongo.{MongoConnector, MongoSpecSupport}
+import org.scalatest.concurrent.IntegrationPatience
+import uk.gov.hmrc.mongo.test.CleanMongoCollectionSupport
 
-import scala.concurrent.ExecutionContext.Implicits.global
-
-class BuildsRepositorySpec extends WordSpec with MongoSpecSupport with ScalaFutures with IntegrationPatience {
+class BuildsRepositorySpec extends WordSpec with CleanMongoCollectionSupport with IntegrationPatience {
 
   "Builds repository" should {
-    "ensure indexes are created" in new Setup {
+    "ensure indexes are created" in {
       Thread.sleep(2000) // quick fix workaround for race condition creating indexes
 
-      val indexes = repository.collection.indexesManager.list().futureValue
+      val indexes = repository.collection.listIndexes().toFuture.futureValue
 
-      indexes.map(index => index.key -> index.background) should contain allOf (
-        Seq("repositoryName" -> Descending) -> true,
-        Seq("jobName"        -> Descending, "timestamp" -> Descending) -> true
+      indexes.flatMap(d => d.get[BsonDocument]("key")) should contain allOf(
+        BsonDocument("repositoryName" -> -1),
+        BsonDocument("jobName" -> -1, "timestamp" -> -1)
       )
     }
   }
 
   "persist" should {
 
-    "updates existing jobs and insert new ones" in new Setup {
+    "updates existing jobs and insert new ones" in {
       val existingBuild1 = builds.generateOne
       val existingBuild2 = builds.generateOne
 
-      repository.insert(existingBuild1).futureValue
-      repository.insert(existingBuild2).futureValue
-      repository.count.futureValue shouldBe 2
+      repository.collection.insertOne(existingBuild1).toFuture.futureValue
+      repository.collection.insertOne(existingBuild2).toFuture.futureValue
+      repository.collection.countDocuments.toFuture.futureValue shouldBe 2
 
       val updatedBuild1 = existingBuild1.copy(result = Some("result1Updated"))
-      val newBuild      = builds.generateOne
+      val newBuild = builds.generateOne
 
       repository.persist(Seq(updatedBuild1, newBuild)).futureValue shouldBe UpdateResult(nSuccesses = 2, nFailures = 0)
 
-      repository.findAll().futureValue should contain theSameElementsAs Seq(updatedBuild1, existingBuild2, newBuild)
+      repository.collection.find().toFuture.futureValue should contain theSameElementsAs Seq(updatedBuild1, existingBuild2, newBuild)
     }
 
-    "do nothing when there are no jobs given" in new Setup {
+    "do nothing when there are no jobs given" in {
       val existingBuild1 = builds.generateOne
       val existingBuild2 = builds.generateOne
 
-      repository.insert(existingBuild1).futureValue
-      repository.insert(existingBuild2).futureValue
-      repository.count.futureValue shouldBe 2
+      repository.collection.insertOne(existingBuild1).toFuture.futureValue
+      repository.collection.insertOne(existingBuild2).toFuture.futureValue
+      repository.collection.countDocuments.toFuture.futureValue shouldBe 2
 
       repository.persist(Nil).futureValue shouldBe UpdateResult(nSuccesses = 0, nFailures = 0)
 
-      repository.findAll().futureValue should contain theSameElementsAs Seq(existingBuild1, existingBuild2)
+      repository.collection.find().toFuture.futureValue should contain theSameElementsAs Seq(existingBuild1, existingBuild2)
     }
 
-    "add another record if there is another build for the same job" in new Setup {
+    "add another record if there is another build for the same job" in {
       val build = builds.generateOne
 
-      repository.insert(build).futureValue
-      repository.count.futureValue shouldBe 1
+      repository.collection.insertOne(build).toFuture.futureValue
+      repository.collection.countDocuments.toFuture.futureValue shouldBe 1
 
       val anotherBuildForTheSameJob = build.copy(timestamp = Some(System.currentTimeMillis()), buildNumber = Some(2))
 
       repository.persist(Seq(build, anotherBuildForTheSameJob)).futureValue shouldBe UpdateResult(
-        nSuccesses = 2,
-        nFailures  = 0
+          nSuccesses = 2,
+          nFailures = 0
       )
 
-      repository.findAll().futureValue should contain theSameElementsAs Seq(build, anotherBuildForTheSameJob)
+      repository.collection.find().toFuture.futureValue.length shouldBe 2
+      repository.collection.find().toFuture.futureValue should contain theSameElementsAs Seq(build, anotherBuildForTheSameJob)
     }
 
-    "save builds until the first failing build" in new Setup {
-
-      val build1 = builds.generateOne.copy(jobName = Some("job1"))
-      val build2 = builds.generateOne.copy(jobName = Some("job2"))
-
-      val build2Updated = build2.copy(buildNumber = build2.buildNumber.map(_ + 1))
-
-      def updateQueryFailing(build: Build): Build => JsValue = {
-        case buildToSerialize if buildToSerialize == build => Json.obj("_id" -> 0)
-        case buildToSerialize                              => Json.toJson(buildToSerialize)
-      }
-      override val repository = new BuildsRepository(mongoComponent, updateQueryFailing(build2Updated))
-
-      repository.insert(build2).futureValue
-      repository.count.futureValue shouldBe 1
-
-      repository
-        .persist(Seq(build1, build2Updated))
-        .futureValue shouldBe UpdateResult(
-        nSuccesses = 1,
-        nFailures  = 1
-      )
-
-      repository.findAll().futureValue should contain theSameElementsAs Seq(build1, build2)
-    }
-
-    "allow to save high number of build objects" in new Setup {
+    "allow to save high number of build objects" in {
 
       val builds = buildsList(1100).generateOne
 
@@ -123,24 +95,24 @@ class BuildsRepositorySpec extends WordSpec with MongoSpecSupport with ScalaFutu
         .persist(builds)
         .futureValue shouldBe UpdateResult(
         nSuccesses = builds.size,
-        nFailures  = 0
+        nFailures = 0
       )
 
-      repository.count.futureValue shouldBe builds.size
+      repository.collection.countDocuments.toFuture.futureValue shouldBe builds.size
     }
   }
 
   "getForRepository" should {
 
-    "return all builds for the given repository" in new Setup {
-      val build                     = builds.generateOne
+    "return all builds for the given repository" in {
+      val build = builds.generateOne
       val anotherBuildForTheSameJob = build.copy(timestamp = Some(System.currentTimeMillis()), buildNumber = Some(2))
-      val buildForDifferentJob      = builds.generateOne
+      val buildForDifferentJob = builds.generateOne
 
-      repository.insert(build).futureValue
-      repository.insert(anotherBuildForTheSameJob).futureValue
-      repository.insert(buildForDifferentJob).futureValue
-      repository.count.futureValue shouldBe 3
+      repository.collection.insertOne(build).toFuture.futureValue
+      repository.collection.insertOne(anotherBuildForTheSameJob).toFuture.futureValue
+      repository.collection.insertOne(buildForDifferentJob).toFuture.futureValue
+      repository.collection.countDocuments.toFuture.futureValue shouldBe 3
 
       val buildsForRepository = repository
         .getForRepository(build.repositoryName.get)
@@ -149,7 +121,7 @@ class BuildsRepositorySpec extends WordSpec with MongoSpecSupport with ScalaFutu
       buildsForRepository should contain theSameElementsAs Seq(build, anotherBuildForTheSameJob)
     }
 
-    "return no builds if there are not jobs for the given repository" in new Setup {
+    "return no builds if there are not jobs for the given repository" in {
 
       val builds = repository.getForRepository("unknown repository").futureValue
 
@@ -157,34 +129,24 @@ class BuildsRepositorySpec extends WordSpec with MongoSpecSupport with ScalaFutu
     }
   }
 
-  private val mongoComponent: ReactiveMongoComponent = new ReactiveMongoComponent {
-    override val mongoConnector: MongoConnector = mongoConnectorForTest
-  }
-
-  private trait Setup {
-    mongo().drop().futureValue
-
-    val repository = new BuildsRepository(mongoComponent)
-  }
-
   private def strings(minLength: Int, maxLength: Int): Gen[String] =
     for {
       length <- Gen.chooseNum(minLength, maxLength)
-      chars  <- Gen.listOfN(length, Gen.alphaNumChar)
+      chars <- Gen.listOfN(length, Gen.alphaNumChar)
     } yield chars.mkString
 
   private def positiveInts(max: Int): Gen[Int] = Gen.chooseNum(1, max)
 
   private val builds: Gen[Build] = for {
     repositoryName <- strings(5, 20)
-    jobName        <- strings(5, 20)
-    jobUrl         <- strings(5, 40)
-    buildNumber    <- positiveInts(9999)
-    result         <- strings(5, 10)
-    timestamp      <- Gen.const(System.currentTimeMillis())
-    duration       <- positiveInts(99999)
-    buildUrl       <- strings(5, 40)
-    builtOn        <- strings(5, 10)
+    jobName <- strings(5, 20)
+    jobUrl <- strings(5, 40)
+    buildNumber <- positiveInts(9999)
+    result <- strings(5, 10)
+    timestamp <- Gen.const(System.currentTimeMillis())
+    duration <- positiveInts(99999)
+    buildUrl <- strings(5, 40)
+    builtOn <- strings(5, 10)
   } yield
     Build(
       Some(repositoryName),
@@ -203,4 +165,8 @@ class BuildsRepositorySpec extends WordSpec with MongoSpecSupport with ScalaFutu
   private implicit class GenOps[T](generator: Gen[T]) {
     lazy val generateOne: T = generator.sample.getOrElse(generateOne)
   }
+
+  private val repository = new BuildsRepository(mongoComponent)
+  override protected val collectionName: String = repository.collectionName
+  override protected val indexes: Seq[IndexModel] = repository.indexes
 }
