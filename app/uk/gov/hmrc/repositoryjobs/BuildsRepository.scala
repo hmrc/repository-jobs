@@ -63,18 +63,21 @@ private[repositoryjobs] class BuildsRepository @Inject()(mongo: MongoComponent)
       jobName <- build.jobName
       timestamp <- build.timestamp
       filter = and(equal("jobName", jobName), equal("timestamp", timestamp))
-      result = collection.findOneAndReplace(filter, build, FindOneAndReplaceOptions().upsert(true))
+      result = collection.findOneAndReplace(
+        filter = filter,
+        replacement = build,
+        options = FindOneAndReplaceOptions().upsert(true))
         .toFuture()
-        .map(_ => UpdateResult(1, 0))
+        .map(_ => UpdateResult(nSuccesses = 1, nFailures = 0))
         .recover{
-          case _ => UpdateResult(0, 1)
+          case _ => UpdateResult(nSuccesses = 0, nFailures = 1)
         }
     } yield result
   }
 
   def persist(builds: Seq[Build]): Future[UpdateResult] = {
     Future.sequence(builds.flatMap(build => persistOne(build)))
-      .map(_.foldLeft(UpdateResult(0, 0))((a, b) =>
-        UpdateResult(a.nSuccesses + b.nSuccesses, a.nFailures + b.nFailures)))
+      .map(_.foldLeft(UpdateResult(0, 0))((total, current) =>
+        UpdateResult(total.nSuccesses + current.nSuccesses, total.nFailures + current.nFailures)))
   }
 }

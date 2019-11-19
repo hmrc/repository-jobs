@@ -22,9 +22,9 @@ import org.scalacheck.Gen
 import org.scalatest.Matchers._
 import org.scalatest.WordSpec
 import org.scalatest.concurrent.IntegrationPatience
-import uk.gov.hmrc.mongo.test.CleanMongoCollectionSupport
+import uk.gov.hmrc.mongo.test.{CleanMongoCollectionSupport, IndexedMongoQueriesSupport}
 
-class BuildsRepositorySpec extends WordSpec with CleanMongoCollectionSupport with IntegrationPatience {
+class BuildsRepositorySpec extends WordSpec with CleanMongoCollectionSupport with IndexedMongoQueriesSupport with IntegrationPatience {
 
   "Builds repository" should {
     "ensure indexes are created" in {
