@@ -16,28 +16,14 @@
 
 package uk.gov.hmrc.repositoryjobs
 
-import org.mongodb.scala.bson.BsonDocument
 import org.mongodb.scala.model.IndexModel
 import org.scalacheck.Gen
 import org.scalatest.Matchers._
 import org.scalatest.WordSpec
 import org.scalatest.concurrent.IntegrationPatience
-import uk.gov.hmrc.mongo.test.{CleanMongoCollectionSupport, IndexedMongoQueriesSupport}
+import uk.gov.hmrc.mongo.test.DefaultMongoCollectionSupport
 
-class BuildsRepositorySpec extends WordSpec with CleanMongoCollectionSupport with IndexedMongoQueriesSupport with IntegrationPatience {
-
-  "Builds repository" should {
-    "ensure indexes are created" in {
-      Thread.sleep(2000) // quick fix workaround for race condition creating indexes
-
-      val indexes = repository.collection.listIndexes().toFuture.futureValue
-
-      indexes.flatMap(d => d.get[BsonDocument]("key")) should contain allOf(
-        BsonDocument("repositoryName" -> -1),
-        BsonDocument("jobName" -> -1, "timestamp" -> -1)
-      )
-    }
-  }
+class BuildsRepositorySpec extends WordSpec with DefaultMongoCollectionSupport with IntegrationPatience {
 
   "persist" should {
 
