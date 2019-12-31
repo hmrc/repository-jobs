@@ -20,8 +20,8 @@ import javax.inject.{Inject, Singleton}
 import org.mongodb.scala.model.Filters._
 import org.mongodb.scala.model.{FindOneAndReplaceOptions, IndexModel, IndexOptions, Indexes}
 import play.api.libs.json._
-import uk.gov.hmrc.mongo.component.MongoComponent
-import uk.gov.hmrc.mongo.play.PlayMongoCollection
+import uk.gov.hmrc.mongo.MongoComponent
+import uk.gov.hmrc.mongo.play.json.PlayMongoCollection
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future

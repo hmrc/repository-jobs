@@ -17,16 +17,16 @@
 package uk.gov.hmrc.repositoryjobs
 
 import cats.syntax.option._
-import org.mockito.Matchers.any
-import org.mockito.Mockito._
+import org.mockito.ArgumentMatchers.any
+import org.mockito.MockitoSugar
 import org.scalatest.concurrent.ScalaFutures
-import org.scalatestplus.mockito.MockitoSugar
-import org.scalatest.{Matchers, WordSpec}
+import org.scalatest.matchers.should.Matchers
+import org.scalatest.wordspec.AnyWordSpec
 import uk.gov.hmrc.http.HeaderCarrier
 
 import scala.concurrent.Future
 
-class RepositoryJobsServiceSpec extends WordSpec with Matchers with ScalaFutures with MockitoSugar {
+class RepositoryJobsServiceSpec extends AnyWordSpec with Matchers with ScalaFutures with MockitoSugar {
 
   "Update" should {
     "fetch all builds from ci-open and ci-dev and new build and persist them" in {

@@ -16,11 +16,12 @@
 
 package uk.gov.hmrc.repositoryjobs
 import org.scalacheck.{Arbitrary, Gen}
-import org.scalatest.{Matchers, WordSpec}
-import org.scalatestplus.scalacheck.ScalaCheckPropertyChecks
 import uk.gov.hmrc.repositoryjobs.JenkinsBuildJobsResponse.flattenJobs
+import org.scalatestplus.scalacheck.ScalaCheckDrivenPropertyChecks
+import org.scalatest.matchers.should.Matchers
+import org.scalatest.wordspec.AnyWordSpec
 
-class JenkinsBuildJobsResponseSpec extends WordSpec with Matchers with ScalaCheckPropertyChecks {
+class JenkinsBuildJobsResponseSpec extends AnyWordSpec with Matchers with ScalaCheckDrivenPropertyChecks {
   "flattenJobs" should {
     "flatten a nested list of folders and jobs" in {
       val job1    = Job(Some("job"), None, Nil, None)
