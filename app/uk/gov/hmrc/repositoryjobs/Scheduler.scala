@@ -23,7 +23,6 @@ import java.util.concurrent.TimeUnit
 import javax.inject.{Inject, Singleton}
 import scala.concurrent.duration.Duration
 import play.Logger
-import uk.gov.hmrc.mongo.component.MongoComponent
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
@@ -41,7 +40,7 @@ class Scheduler @Inject()(
 
   override val lockId: String = "repository-jobs-scheduled-job"
 
-  override val mongoLockRepository: MongoLockRepository = mongoLockRepo
+  override val lockRepository: MongoLockRepository = mongoLockRepo
 
   override val ttl: Duration = Duration(30, TimeUnit.MINUTES)
 

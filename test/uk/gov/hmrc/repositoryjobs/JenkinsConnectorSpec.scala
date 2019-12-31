@@ -19,13 +19,11 @@ package uk.gov.hmrc.repositoryjobs
 import cats.syntax.option._
 import com.github.tomakehurst.wiremock.http.RequestMethod._
 import com.google.common.io.BaseEncoding
-import org.mockito.ArgumentCaptor
-import org.mockito.Matchers.any
-import org.mockito.Mockito.when
+import org.mockito.{ArgumentCaptor, MockitoSugar}
+import org.mockito.ArgumentMatchers.any
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.time.{Millis, Span}
-import org.scalatest.{Matchers, OptionValues, WordSpec}
-import org.scalatestplus.mockito.MockitoSugar
+import org.scalatest.OptionValues
 import org.scalatestplus.play.guice.GuiceOneAppPerSuite
 import uk.gov.hmrc.http.logging.Authorization
 import uk.gov.hmrc.http.{HeaderCarrier, HttpResponse}
@@ -34,9 +32,11 @@ import uk.gov.hmrc.repositoryjobs.config.RepositoryJobsConfig
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
+import org.scalatest.matchers.should.Matchers
+import org.scalatest.wordspec.AnyWordSpec
 
 class JenkinsConnectorSpec
-    extends WordSpec
+    extends AnyWordSpec
     with Matchers
     with WireMockEndpoints
     with ScalaFutures

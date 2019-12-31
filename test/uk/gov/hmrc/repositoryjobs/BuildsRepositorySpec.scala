@@ -18,12 +18,12 @@ package uk.gov.hmrc.repositoryjobs
 
 import org.mongodb.scala.model.IndexModel
 import org.scalacheck.Gen
-import org.scalatest.Matchers._
-import org.scalatest.WordSpec
 import org.scalatest.concurrent.IntegrationPatience
 import uk.gov.hmrc.mongo.test.DefaultMongoCollectionSupport
+import org.scalatest.matchers.should.Matchers
+import org.scalatest.wordspec.AnyWordSpec
 
-class BuildsRepositorySpec extends WordSpec with DefaultMongoCollectionSupport with IntegrationPatience {
+class BuildsRepositorySpec extends AnyWordSpec with Matchers with DefaultMongoCollectionSupport with IntegrationPatience {
 
   "persist" should {
 

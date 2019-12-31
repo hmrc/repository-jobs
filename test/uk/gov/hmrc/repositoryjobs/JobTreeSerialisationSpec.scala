@@ -15,10 +15,11 @@
  */
 
 package uk.gov.hmrc.repositoryjobs
-import org.scalatest.{Matchers, WordSpec}
 import play.api.libs.json._
+import org.scalatest.matchers.should.Matchers
+import org.scalatest.wordspec.AnyWordSpec
 
-class JobTreeSerialisationSpec extends WordSpec with Matchers {
+class JobTreeSerialisationSpec extends AnyWordSpec with Matchers {
   "Reads of JobTree" should {
     "deserialise a JobTree" in {
       Json.parse(folderJson).validate[Option[JobTree]] shouldBe JsSuccess(Some(folder))

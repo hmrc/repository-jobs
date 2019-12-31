@@ -17,19 +17,18 @@
 package uk.gov.hmrc.repositoryjobs
 
 import cats.syntax.option._
-import org.mockito.Matchers._
-import org.mockito.Mockito
-import org.mockito.Mockito.when
-import org.scalatestplus.mockito.MockitoSugar
+import org.mockito.{ArgumentMatchersSugar, Mockito, MockitoSugar}
+import org.scalatest.matchers.should.Matchers
+import org.scalatest.wordspec.AnyWordSpec
 import org.scalatestplus.play.guice.GuiceOneAppPerSuite
 import play.api.libs.json.Json
 import play.api.test.FakeRequest
 import play.api.test.Helpers._
-import uk.gov.hmrc.play.test.UnitSpec
 
 import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.Future
 
-class RepositoryJobsControllerSpec extends UnitSpec with MockitoSugar with GuiceOneAppPerSuite {
+class RepositoryJobsControllerSpec extends AnyWordSpec with Matchers with MockitoSugar with ArgumentMatchersSugar with GuiceOneAppPerSuite {//extends UnitSpec with MockitoSugar  {
 
   "get repository builds" should {
 
@@ -60,7 +59,7 @@ class RepositoryJobsControllerSpec extends UnitSpec with MockitoSugar with Guice
         "built-on".some)
 
       val mockBuildRepository: BuildsRepository = mock[BuildsRepository]
-      when(mockBuildRepository.getForRepository(any())).thenReturn(Seq(build1, build2))
+      when(mockBuildRepository.getForRepository(any)).thenReturn(Future(Seq(build1, build2)))
 
       val controller = controllerWithBuildsRepository(mockBuildRepository)
 
@@ -75,7 +74,7 @@ class RepositoryJobsControllerSpec extends UnitSpec with MockitoSugar with Guice
 
     "return 404 response if repository build not found" in {
       val mockBuildRepository: BuildsRepository = mock[BuildsRepository]
-      when(mockBuildRepository.getForRepository(any())).thenReturn(Nil)
+      when(mockBuildRepository.getForRepository(any)).thenReturn(Future(Nil))
 
       val controller = controllerWithBuildsRepository(mockBuildRepository)
 
@@ -96,7 +95,7 @@ class RepositoryJobsControllerSpec extends UnitSpec with MockitoSugar with Guice
       val mockRepositoryJobService = mock[RepositoryJobsService]
       val expectedResult           = UpdateResult(nSuccesses = 1, nFailures = 0)
 
-      when(mockRepositoryJobService.update).thenReturn(expectedResult)
+      when(mockRepositoryJobService.update).thenReturn(Future(expectedResult))
       val controller = controllerWithRepositoryJobService(mockRepositoryJobService)
 
       val response = controller.reload().apply(FakeRequest())
@@ -110,7 +109,7 @@ class RepositoryJobsControllerSpec extends UnitSpec with MockitoSugar with Guice
       val mockRepositoryJobService = mock[RepositoryJobsService]
       val expectedResult           = UpdateResult(nSuccesses = 1, nFailures = 1)
 
-      when(mockRepositoryJobService.update).thenReturn(expectedResult)
+      when(mockRepositoryJobService.update).thenReturn(Future(expectedResult))
       val controller = controllerWithRepositoryJobService(mockRepositoryJobService)
 
       val response = controller.reload().apply(FakeRequest())
