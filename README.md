@@ -1,6 +1,6 @@
 # repository-jobs
 
-[![Build Status](https://travis-ci.org/hmrc/repository-jobs.svg)](https://travis-ci.org/hmrc/repository-jobs) [ ![Download](https://api.bintray.com/packages/hmrc/releases/repository-jobs/images/download.svg) ](https://bintray.com/hmrc/releases/repository-jobs/_latestVersion)
+[ ![Download](https://api.bintray.com/packages/hmrc/releases/repository-jobs/images/download.svg) ](https://bintray.com/hmrc/releases/repository-jobs/_latestVersion)
 
 This service provides information about the build jobs for repositories.
 
